@@ -1,0 +1,48 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::table('pagos', function (Blueprint $table) {
+            // Campos específicos para Pago Fácil
+            $table->string('referencia_externa')->nullable()->after('metodo_pago');
+            $table->string('transaction_id')->nullable()->after('referencia_externa');
+            $table->json('datos_pago')->nullable()->after('transaction_id');
+            $table->timestamp('fecha_pago')->nullable()->after('datos_pago');
+            $table->string('estado')->default('pendiente')->after('fecha_pago');
+            
+            // Índices para mejorar el rendimiento
+            $table->index(['referencia_externa']);
+            $table->index(['transaction_id']);
+            $table->index(['estado']);
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('pagos', function (Blueprint $table) {
+            $table->dropIndex(['referencia_externa']);
+            $table->dropIndex(['transaction_id']);
+            $table->dropIndex(['estado']);
+            
+            $table->dropColumn([
+                'referencia_externa',
+                'transaction_id',
+                'datos_pago',
+                'fecha_pago',
+                'estado'
+            ]);
+        });
+    }
+};

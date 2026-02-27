@@ -1,0 +1,134 @@
+1.- Autenticación
+Tipo: POST
+Endpoint: /login
+La API utiliza requiere de un token para utilizar los servicios, este se obtiene a través de la
+autenticación. El flujo es el siguiente:
+1. Obtener Token: Se realiza una solicitud al endpoint /login con tus credenciales (tcTokenService y
+tcTokenSecret) en las cabeceras para obtener un accessToken.
+2. Usar Token: En todas las solicitudes posteriores a endpoints protegidos, se debe incluir el
+accessToken en la cabecera Authorization con el esquema Bearer.
+Authorization: Bearer <tu_access_token>
+Nota: El token tiene una vida útil limitada, especificada en la respuesta de login. Es
+responsabilidad del cliente gestionar su renovación antes de que expire.
+Ejemplo de Uso (Header)
+{
+"tcTokenSecret": "qweeretyrtyrtgrey...",
+"tcTokenService": "ewgbjukaewqrq..."
+}
+Estructura de Respuesta Estándar
+Todas las respuestas de la API siguen una estructura JSON consistente para facilitar el manejo de éxitos
+y errores.
+{
+"error": 0,
+"status": 1,
+"message": "Autenticación exitosa.",
+"values": {
+"accessToken": "eyJ0eXAlYIRl_v2Ak…",
+"tokenType": "bearer",
+"expiresInMinutes": 789.71
+}
+}
+
+3.- Generar QR
+Tipo: POST
+Endpoint: /generate-qr
+Este es el endpoint central para iniciar una transacción. Crea una orden en PagoFácil y obtiene el código
+QR para que el cliente final pague.
+Ejemplo de Uso (Header y Body)
+{
+"Authorization": "Bearer 4qw5fretyrtyrtgrey..."
+}
+{
+"paymentMethod": Payment_Id_Number,
+"clientName": "Jhon Doe",
+"documentType": 1,
+"documentId": "Nro_CI_Cliente",
+"phoneNumber": "Nro_Telefono_Cliente",
+"email": "Correo_Cliente",
+"paymentNumber": "Id_Transaccion_Empresa",
+"amount": 0.1, // Monto de la Transacción
+"currency": 2,
+"clientCode": "Id_Cliente_Empresa",
+"callbackUrl": "https://tu-dominio.com/callback",
+"orderDetail": [
+{
+"serial": 1,
+"product": "Detalle_Item",
+"quantity": 1,
+"price": 0.1,
+"discount": 0,
+"total": 0.1
+}
+]
+}
+Estructura de Respuesta Estándar
+{
+"error": 0,
+"status": 2007,
+"message": "QR Generado Correctamente.",
+"values": {
+"transactionId": "Id_Transaccion_PagoFacil",
+"paymentMethodTransactionId": "Id_Transaccion_Empresa",
+"status": 1,
+"expirationDate": "Y-m-d H:i:s",
+"qrBase64": "BF9n8cbrS48hRv9/z2dFX73kegDYcw...",
+"checkoutUrl": "Url_Link", // Se devolvera una url si corresponde
+"deepLink": "App_Link", // Se devolvera una url si corresponde
+"qrContentUrl": "Url_Link", // Se devolvera una url si corresponde
+"universalUrl": "Url_Link" // Se devolvera una url si corresponde
+}
+}
+
+4.- Consultar Transacción
+Tipo: POST
+Endpoint: /query-transaction
+Verifica el estado actual de una transacción.
+Ejemplo de Uso (Header y Body)
+{
+"Authorization": "Bearer 4qw5fretyrtyrtgrey..."
+}
+{
+"pagofacilTransactionId": Id_Transaccion_PagoFacil, // Solo se requiere uno de los datos
+"companyTransactionId": "Id_Transaccion_Empresa",
+}
+Estructura de Respuesta Estándar
+{
+"error": 0,
+"status": 2008,
+"message": "Consulta realizada.",
+"values": {
+"pagofacilTransactionId": Id_Transaccion_PagoFacil,
+"companyTransactionId": "Id_Transaccion_Empresa",
+"paymentMethodId": Payment_Id_Number,
+"paymentStatus": Id_Estado_Transaccion,
+"amount": "1.00",
+"currencyId": 2,
+"paymentDate": "Y-m-d H:i:s",
+"paymentTime": "Y-m-d H:i:s"
+}
+}
+
+Notificaciones (URL Callback)
+Si se especifica el parámetro tcUrlCallBack al generar el QR, nuestro sistema llamará a esa URL para
+notificar que el pago se ha realizado. Esta es la forma recomendada para recibir actualizaciones de
+estado en tiempo real.
+Estructura de la Notificación (Callback)
+La notificación se enviará como una solicitud HTTP POST a la tcUrlCallBack que registraste. El cuerpo
+de la solicitud será un objeto JSON con la siguiente estructura:
+{
+ "PedidoID": "El Id de identificación del pedido (Numero de venta/factura del comercio)",
+ "Fecha": "Fecha de realización del pago",
+ "Hora": "Hora del pago",
+ "MetodoPago": "Medio por el que se realizo el pago",
+ "Estado": "Estado del pago"
+}
+Tu sistema debe usar el PedidoID para identificar la orden y actualizar su estado.
+Respuesta Esperada por la API
+Para finalizar el proceso y confirmar la recepción de la notificación, tu servidor debe responder con un
+código de estado HTTP 200 OK y la siguiente estructura JSON en el cuerpo:
+{
+ "error": 0,
+ "status": 1,
+ "message": "Mensaje personalizado de éxito",
+ "values": true
+}

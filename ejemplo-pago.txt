@@ -1,0 +1,776 @@
+/CONFIG/PAGOFACIL.PHP
+
+<?php
+
+return [
+    /*
+    |--------------------------------------------------------------------------
+    | Pago Fácil Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuración para la integración con Pago Fácil
+    |
+    */
+
+    'base_url' => env('PAGOFACIL_BASE_URL', 'https://serviciostigomoney.pagofacil.com.bo'),
+    
+    'token_service' => env('PAGOFACIL_TOKEN_SERVICE', '51247fae280c20410824977b0781453df59fad5b23bf2a0d14e884482f91e09078dbe5966e0b970ba696ec4caf9aa5661802935f86717c481f1670e63f35d5041c31d7cc6124be82afedc4fe926b806755efe678917468e31593a5f427c79cdf016b686fca0cb58eb145cf524f62088b57c6987b3bb3f30c2082b640d7c52907'),
+    
+    'token_secret' => env('PAGOFACIL_TOKEN_SECRET', '9E7BC239DDC04F83B49FFDA5'),
+    
+   // 'commerce_id' => env('PAGOFACIL_COMMERCE_ID', 'd029fa3a95e174a19934857f535eb9427d967218a36ea014b70ad704bc6c8d1c'),
+    
+    // URLs de callback y retorno
+    'callback_url' => env('PAGOFACIL_CALLBACK_URL', env('APP_URL', 'http://localhost') . '/pagofacil/callback'),
+    
+    'return_url' => env('PAGOFACIL_RETURN_URL', env('APP_URL', 'http://localhost') . '/pagofacil/return'),
+    
+    // Configuraciones adicionales
+    'timeout' => env('PAGOFACIL_TIMEOUT', 30),
+    
+    'currency' => 2, // 2 = BOB (Bolivianos)
+    
+    // Habilitar/deshabilitar logs
+    'enable_logs' => env('PAGOFACIL_ENABLE_LOGS', true),
+    
+    // Entorno (sandbox o production)
+    'environment' => env('PAGOFACIL_ENVIRONMENT', 'sandbox'),
+];
+
+
+app/Http/Controllers/PagoFacilController.php
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use App\Models\Venta;
+use App\Models\Pago;
+use App\Models\Pedido;
+use Inertia\Inertia;
+use GuzzleHttp\Client;
+
+class PagoFacilController extends Controller
+{
+    /**
+     * Estados de pago según PagoFácil
+     * Estos valores pueden variar, ajusta según tu documentación específica
+     */
+    private const PAYMENT_STATUS_PENDING = 0;
+    private const PAYMENT_STATUS_COMPLETED = 2;
+    private const PAYMENT_STATUS_REJECTED = 3;
+
+    /**
+     * Mostrar la página de pago
+     */
+    public function index(Request $request)
+    {
+        $ventaId = $request->query('venta_id');
+
+        if (!$ventaId) {
+            return redirect()->route('ventas.index')->with('error', 'ID de venta requerido.');
+        }
+
+        $venta = Venta::with(['detalles.producto', 'pedido.usuario'])->findOrFail($ventaId);
+
+        return Inertia::render('PagoFacil/Index', [
+            'venta' => $venta
+        ]);
+    }
+
+    /**
+     * Generar QR para pago
+     */
+    public function generarQR(Request $request)
+    {
+        try {
+            Log::info('Inicio del método generarQR', ['request' => $request->all()]);
+
+            $request->validate([
+                'venta_id' => 'required|exists:ventas,id',
+                'metodo_pago' => 'required|in:qr,tigo_money'
+            ]);
+
+            $venta = Venta::with(['detalles.producto', 'pedido.usuario'])->findOrFail($request->venta_id);
+            Log::info('Venta encontrada', ['venta' => $venta]);
+
+            // Obtener token de autenticación
+            $tokenResponse = $this->obtenerToken();
+            Log::info('Token obtenido', ['tokenResponse' => $tokenResponse]);
+
+            if (!isset($tokenResponse['values']['accessToken'])) {
+                Log::error('No se pudo obtener un token válido', ['response' => $tokenResponse]);
+                return response()->json(['success' => false, 'message' => 'No se pudo obtener un token válido'], 500);
+            }
+
+            $accessToken = $tokenResponse['values']['accessToken'];
+            Log::info('Access token extraído correctamente', ['token' => substr($accessToken, 0, 20) . '...']);
+
+            // Preparar datos del pedido
+            $pedidoDetalle = $this->formatearDetallesPedido($venta);
+            $nroPago = "venta-" . $venta->id . "-" . time();
+
+            $body = [
+                "paymentMethod" => 4, // 1 = QR
+                "clientName" => $venta->pedido->usuario->name,
+                "documentType" => 1,
+                "documentId" => (string)($request->ci_nit ?? "0"),
+                "phoneNumber" => (string)($request->telefono ?? "0"),
+                "email" => $venta->pedido->usuario->email,
+                "paymentNumber" => $nroPago,
+                "amount" => (float)$venta->total,
+                "currency" => 2, // BOB
+                "clientCode" => (string)$venta->pedido->usuario->id,
+                "callbackUrl" => config('pagofacil.callback_url'),
+                "orderDetail" => $pedidoDetalle,
+            ];
+
+            Log::info('Cuerpo de la solicitud generado', ['body' => $body]);
+
+            $headers = [
+                'Accept' => 'application/json',
+                'Authorization' => 'Bearer ' . $accessToken
+            ];
+
+            $client = new Client();
+            $url = config('pagofacil.base_url') . '/generate-qr';
+            Log::info('Enviando solicitud a PagoFácil', ['url' => $url]);
+
+            $response = $client->post($url, [
+                'headers' => $headers,
+                'json' => $body
+            ]);
+
+            $responseContent = $response->getBody()->getContents();
+            Log::info('Contenido crudo de la respuesta', ['response' => $responseContent]);
+
+            $result = json_decode($responseContent, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                Log::error('Error al decodificar JSON', [
+                    'error_message' => json_last_error_msg(),
+                    'response_content' => $responseContent
+                ]);
+                return response()->json(['success' => false, 'message' => 'Error al procesar la respuesta del servicio'], 500);
+            }
+
+            if (!isset($result['values'])) {
+                Log::error('El campo values no está presente en la respuesta', ['result' => $result]);
+                return response()->json(['success' => false, 'message' => 'Respuesta inesperada del servicio'], 500);
+            }
+
+            $values = $result['values'];
+
+            Log::info('Estructura completa de values recibida', [
+                'values_keys' => array_keys((array)$values),
+                'values_type' => gettype($values),
+                'values_content' => $values
+            ]);
+
+            $qrBase64 = $values['qrBase64'] ?? null;
+            $transactionId = $values['transactionId'] ?? null;
+
+            if (!$qrBase64 || !$transactionId) {
+                Log::error('No se encontraron qrBase64 o transactionId en la respuesta', [
+                    'values' => $values,
+                    'qrBase64_encontrado' => !is_null($qrBase64),
+                    'transactionId_encontrado' => !is_null($transactionId),
+                    'todas_las_claves' => array_keys((array)$values)
+                ]);
+                return response()->json(['success' => false, 'message' => 'Error al obtener los datos del QR'], 500);
+            }
+
+            $qrImageBase64 = "data:image/png;base64," . $qrBase64;
+
+            // Crear registro de pago pendiente
+            $pago = Pago::create([
+                'venta_id' => $venta->id,
+                'monto' => $venta->total,
+                'fecha' => now(),
+                'metodo_pago' => 'PAGO_FACIL',
+                'estado' => 'pendiente',
+                'referencia_externa' => $nroPago,
+                'transaction_id' => $transactionId,
+                'datos_pago' => json_encode($result)
+            ]);
+
+            Log::info('QR y transaction ID generados correctamente', [
+                'qrBase64' => substr($qrBase64, 0, 50) . '...',
+                'transactionId' => $transactionId,
+                'pago_id' => $pago->id
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'qr_image' => $qrImageBase64,
+                'transaction_id' => $transactionId,
+                'nro_pago' => $nroPago
+            ]);
+        } catch (\Throwable $th) {
+            Log::error('Error en generarQR', [
+                'error' => $th->getMessage(),
+                'line' => $th->getLine(),
+                'file' => $th->getFile(),
+                'trace' => $th->getTraceAsString()
+            ]);
+            return response()->json(['success' => false, 'message' => $th->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Consultar estado del pago
+     * Retorna la estructura correcta según documentación de PagoFácil
+     */
+
+    // ...existing code...
+    public function consultarEstado(Request $request)
+    {
+        set_time_limit(120);
+
+        try {
+            $transactionId = $request->input('transaction_id');
+
+            if (!$transactionId) {
+                return response()->json(['success' => false, 'message' => 'Transaction ID es requerido'], 400);
+            }
+
+            // 1. Obtener token con manejo de errores
+            try {
+                $tokenResponse = $this->obtenerToken();
+            } catch (\Exception $e) {
+                Log::error('Fallo al obtener token en consultarEstado', ['error' => $e->getMessage()]);
+                return response()->json(['success' => false, 'message' => 'Error de conexión con pasarela'], 500);
+            }
+
+            if (!isset($tokenResponse['values']['accessToken'])) {
+                return response()->json(['success' => false, 'message' => 'No se pudo autenticar con PagoFácil'], 500);
+            }
+
+            $accessToken = $tokenResponse['values']['accessToken'];
+            $client = new Client();
+
+            // 2. Realizar la petición con http_errors => false para evitar excepciones fatales
+            $response = $client->post(config('pagofacil.base_url') . '/query-transaction', [
+                'headers' => [
+                    'Accept' => 'application/json',
+                    'Authorization' => 'Bearer ' . $accessToken
+                ],
+                'json' => [
+                    'pagofacilTransactionId' => $transactionId // Asegurar que sea entero
+                ],
+                'http_errors' => false,
+                'timeout' => 90,        // ✅ AUMENTADO: Esperar hasta 90s
+                'connect_timeout' => 10 //
+                // IMPORTANTE: Evita que Guzzle lance excepción en 4xx/5xx
+            ]);
+
+            $responseContent = $response->getBody()->getContents();
+            $result = json_decode($responseContent, true);
+
+            Log::info('Respuesta cruda consultarEstado', ['content' => $result]);
+
+            // 3. Validar si la respuesta es válida (JSON mal formado o null)
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return response()->json(['success' => false, 'message' => 'Respuesta inválida del proveedor'], 500);
+            }
+
+            // 4. Validar errores lógicos de la API
+            if (isset($result['error']) && $result['error'] != 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $result['message'] ?? 'Error en la transacción'
+                ], 400);
+            }
+
+            if (!isset($result['values'])) {
+                return response()->json(['success' => false, 'message' => 'Datos no encontrados'], 404);
+            }
+
+            $values = $result['values'];
+
+            // 5. Retornar datos seguros (usando null coalescing operator ??)
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'pagofacilTransactionId' => $values['pagofacilTransactionId'] ?? null,
+                    'companyTransactionId' => $values['companyTransactionId'] ?? null,
+                    'paymentStatus' => $values['paymentStatus'] ?? null, // Aquí vendrá el 5
+                    'paymentDate' => $values['paymentDate'] ?? null,
+                    'paymentTime' => $values['paymentTime'] ?? null,
+                    // Agregamos descripción para depuración
+                    'paymentStatusDescription' => $values['paymentStatusDescription'] ?? ''
+                ],
+                'message' => $result['message'] ?? 'Consulta realizada'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Excepción crítica en consultarEstado', [
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
+            ]);
+            return response()->json(['success' => false, 'message' => 'Error interno del servidor: ' . $e->getMessage()], 500);
+        }
+    }
+// ...existing code...
+
+    /**
+     * Callback para notificaciones de Pago Fácil
+     * Recibe notificaciones cuando se completa un pago
+     */
+    public function callback(Request $request)
+    {
+        try {
+            Log::info('Callback recibido de Pago Fácil', ['data' => $request->all()]);
+
+            // Validar que se recibieron todos los datos necesarios
+            $pedidoId = $request->input('PedidoID');
+            $fecha = $request->input('Fecha');
+            $hora = $request->input('Hora');
+            $metodoPago = $request->input('MetodoPago');
+            $estado = $request->input('Estado');
+
+            if (!$pedidoId) {
+                Log::error('Callback sin PedidoID', ['data' => $request->all()]);
+                return response()->json([
+                    'error' => 1,
+                    'status' => 0,
+                    'message' => "PedidoID es requerido",
+                    'values' => false
+                ]);
+            }
+
+            Log::info('Buscando pago con referencia externa', ['pedido_id' => $pedidoId]);
+
+            $pago = Pago::where('referencia_externa', $pedidoId)->first();
+
+            if (!$pago) {
+                $todosPagos = Pago::select('id', 'referencia_externa', 'venta_id', 'estado')->get();
+
+                Log::error('Pago no encontrado en base de datos', [
+                    'pedido_id_buscado' => $pedidoId,
+                    'callback_data' => $request->all(),
+                    'pagos_existentes' => $todosPagos->toArray()
+                ]);
+
+                // Intentar extraer el ID de venta del PedidoID (formato: venta-{id}-{timestamp})
+                if (preg_match('/^venta-(\d+)-\d+$/', $pedidoId, $matches)) {
+                    $ventaId = $matches[1];
+                    Log::info('ID de venta extraído del PedidoID', ['venta_id' => $ventaId]);
+
+                    $pagoAlternativo = Pago::where('venta_id', $ventaId)
+                        ->where('estado', 'pendiente')
+                        ->orderBy('id', 'desc')
+                        ->first();
+
+                    if ($pagoAlternativo) {
+                        Log::warning('Pago encontrado con método alternativo', [
+                            'pago_id' => $pagoAlternativo->id,
+                            'referencia_original' => $pagoAlternativo->referencia_externa,
+                            'referencia_callback' => $pedidoId
+                        ]);
+                        $pago = $pagoAlternativo;
+                        $pago->update(['referencia_externa' => $pedidoId]);
+                    }
+                }
+
+                if (!$pago) {
+                    return response()->json([
+                        'error' => 1,
+                        'status' => 0,
+                        'message' => "Pago no encontrado en el sistema",
+                        'values' => false
+                    ]);
+                }
+            }
+
+            // Procesar según el estado del pago
+            // Nota: El campo 'Estado' del callback contiene el estado desde PagoFácil
+            // Ajusta estos valores según lo que PagoFácil realmente devuelva
+            $estadoInterno = $this->mapearEstadoPago($estado);
+
+            Log::info('Estado mapeado', [
+                'estado_pagofacil' => $estado,
+                'estado_interno' => $estadoInterno
+            ]);
+
+            // Actualizar el pago en nuestra base de datos
+            $pago->update([
+                'estado' => $estadoInterno,
+                'fecha_pago' => now(),
+                'metodo_pago' => 'PAGO_FACIL',
+                'datos_pago' => json_encode([
+                    'callback_data' => $request->all(),
+                    'fecha_callback' => now(),
+                    'metodo_pago_pagofacil' => $metodoPago,
+                    'fecha_pago_pagofacil' => $fecha,
+                    'hora_pago_pagofacil' => $hora
+                ])
+            ]);
+
+            // Si el pago fue completado, actualizar también el estado del pedido
+            if ($estadoInterno === 'completado') {
+                $this->actualizarEstadoPedido($pago);
+            }
+
+            Log::info('Pago actualizado exitosamente desde callback', [
+                'pago_id' => $pago->id,
+                'pedido_id' => $pedidoId,
+                'estado_nuevo' => $estadoInterno,
+                'metodo_pago' => $metodoPago,
+                'fecha_pago' => $fecha . ' ' . $hora
+            ]);
+
+            // Respuesta exitosa según especificación de PagoFácil
+            return response()->json([
+                'error' => 0,
+                'status' => 1,
+                'message' => "Pago procesado correctamente",
+                'values' => true
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error en callback de PagoFácil', [
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile(),
+                'data' => $request->all()
+            ]);
+
+            return response()->json([
+                'error' => 1,
+                'status' => 0,
+                'message' => "No se pudo procesar el pago, por favor intente de nuevo",
+                'values' => false
+            ]);
+        }
+    }
+
+    /**
+     * Mapear estado de PagoFácil a estado interno
+     * Ajusta los valores según la documentación específica de PagoFácil
+     */
+    private function mapearEstadoPago($estado)
+    {
+        $estadoLower = strtolower((string)$estado);
+
+        // Estados completados
+        if (
+            $estadoLower === 'completado' ||
+            $estadoLower === 'pagado' ||
+            $estado === '1' ||
+            $estado === 1 ||
+            $estado === self::PAYMENT_STATUS_COMPLETED ||
+            str_contains($estadoLower, 'procesado')
+        ) {
+            return 'completado';
+        }
+
+        // Estados rechazados
+        if (
+            $estadoLower === 'rechazado' ||
+            $estadoLower === 'cancelado' ||
+            $estado === '3' ||
+            $estado === 3 ||
+            $estado === self::PAYMENT_STATUS_REJECTED
+        ) {
+            return 'rechazado';
+        }
+
+        // Estado por defecto: pendiente
+        return 'pendiente';
+    }
+
+    /**
+     * Página de retorno después del pago
+     */
+    public function return(Request $request)
+    {
+        $status = $request->query('status', 'pending');
+        $nroPago = $request->query('nro_pago');
+        $message = '';
+
+        if ($status === 'success') {
+            $message = 'Pago completado exitosamente';
+        } elseif ($status === 'error') {
+            $message = 'Hubo un error con el pago';
+        } else {
+            $message = 'Pago pendiente de confirmación';
+        }
+
+        return Inertia::render('PagoFacil/Return', [
+            'status' => $status,
+            'message' => $message,
+            'nro_pago' => $nroPago
+        ]);
+    }
+
+    /**
+     * Obtener token de autenticación de Pago Fácil
+     */
+    private function obtenerToken()
+    {
+        try {
+            $client = new Client();
+
+            $response = $client->post(config('pagofacil.base_url') . '/login', [
+                'headers' => [
+                    'Accept' => 'application/json',
+                    'tcTokenService' => config('pagofacil.token_service'),
+                    'tcTokenSecret' => config('pagofacil.token_secret')
+                ],
+                'timeout' => config('pagofacil.timeout', 30)
+            ]);
+
+            $result = json_decode($response->getBody()->getContents(), true);
+
+            if (config('pagofacil.enable_logs')) {
+                Log::info('Token obtenido de Pago Fácil', ['response' => $result]);
+            }
+
+            return $result;
+        } catch (\Exception $e) {
+            if (config('pagofacil.enable_logs')) {
+                Log::error('Error al obtener token de Pago Fácil', [
+                    'error' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ]);
+            }
+            throw new \Exception("Error al obtener el token: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Formatear detalles del pedido para Pago Fácil
+     */
+    private function formatearDetallesPedido($venta)
+    {
+        $detalles = [];
+
+        foreach ($venta->detalles as $detalle) {
+            $detalles[] = [
+                'serial' => $detalle->id,
+                'product' => $detalle->producto->nombre,
+                'quantity' => $detalle->cantidad,
+                'price' => $detalle->precio_unitario,
+                'discount' => 0,
+                'total' => $detalle->cantidad * $detalle->precio_unitario
+            ];
+        }
+
+        return $detalles;
+    }
+
+    /**
+     * Página de prueba para el callback (solo para desarrollo)
+     */
+    public function testCallback()
+    {
+        return Inertia::render('PagoFacil/CallbackTest');
+    }
+
+    /**
+     * Método de debugging para ver los pagos en la base de datos
+     */
+    public function debugPagos(Request $request)
+    {
+        $pagos = Pago::with('venta')
+            ->select('id', 'venta_id', 'referencia_externa', 'transaction_id', 'estado', 'monto', 'fecha')
+            ->orderBy('id', 'desc')
+            ->limit(20)
+            ->get();
+
+        return response()->json([
+            'pagos' => $pagos->map(function ($pago) {
+                return [
+                    'id' => $pago->id,
+                    'venta_id' => $pago->venta_id,
+                    'referencia_externa' => $pago->referencia_externa,
+                    'transaction_id' => $pago->transaction_id,
+                    'estado' => $pago->estado,
+                    'monto' => $pago->monto,
+                    'fecha' => $pago->fecha,
+                ];
+            }),
+            'total_pagos' => Pago::count(),
+            'pagos_pendientes' => Pago::where('estado', 'pendiente')->count(),
+            'pagos_completados' => Pago::where('estado', 'completado')->count(),
+        ]);
+    }
+
+    /**
+     * Obtener estado de un pago por su referencia externa
+     * ✅ CORREGIDO: Usa las claves correctas de la documentación
+     */
+    public function obtenerEstadoPago(Request $request)
+    {
+        try {
+            $transactionId = $request->input('transaction_id');
+
+            if (!$transactionId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Transaction ID es requerida'
+                ], 400);
+            }
+
+            // Buscar el pago por referencia externa
+            $pago = Pago::where('pagoFacilTransactionId', $transactionId)->first();
+
+            if (!$pago) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pago no encontrado'
+                ], 404);
+            }
+
+            // Si hay transaction_id, consultar también el estado en PagoFácil
+            $estadoPagoFacil = null;
+            if ($pago->referencia_externa && $pago->transaction_id) {
+                try {
+                    $tokenResponse = $this->obtenerToken();
+                    $accessToken = $tokenResponse['values']['accessToken'] ?? null;
+
+                    if ($accessToken) {
+                        $client = new Client();
+                        $response = $client->post(config('pagofacil.base_url') . '/query-transaction', [
+                            'headers' => [
+                                'Accept' => 'application/json',
+                                'Authorization' => 'Bearer ' . $accessToken
+                            ],
+                            'json' => [
+                                'pagoFacilTransactionId' => $pago->transaction_id
+                            ]
+                        ]);
+                        Log::info('Intentando consultar transacción en PagoFácil', [
+                            'url' => config('pagofacil.base_url') . '/query-transaction',
+                            'transactionId' => $transactionId,
+                            'headers' => [
+                                'Authorization' => 'Bearer ' . $accessToken
+                            ]
+                        ]);
+                        $result = json_decode($response->getBody()->getContents(), true);
+                        $estadoPagoFacil = $result['values'] ?? null;
+
+                        // ✅ CORREGIDO: Usar las claves correctas de la documentación
+                        if ($estadoPagoFacil && $pago->estado !== 'completado') {
+                            $paymentTime = $estadoPagoFacil['paymentTime'] ?? null;
+                            $paymentDate = $estadoPagoFacil['paymentDate'] ?? null;
+                            $paymentStatus = $estadoPagoFacil['paymentStatus'] ?? null;
+
+                            Log::info('Estado de pago desde PagoFácil', [
+                                'paymentTime' => $paymentTime,
+                                'paymentDate' => $paymentDate,
+                                'paymentStatus' => $paymentStatus
+                            ]);
+
+                            // Verificar si el pago está completado según PagoFácil
+                            $tieneHoraYFecha = ($paymentTime !== null && $paymentDate !== null);
+                            $estadoCompletado = $paymentStatus === 1 || $paymentStatus === 5;
+
+                            if ($tieneHoraYFecha || $estadoCompletado) {
+                                $pago->update([
+                                    'estado' => 'completado',
+                                    'fecha_pago' => now(),
+                                    'datos_pago' => json_encode($estadoPagoFacil)
+                                ]);
+
+                                // Actualizar el estado del pedido a COMPLETADO
+                                $this->actualizarEstadoPedido($pago);
+
+                                Log::info('Pago actualizado como completado desde obtenerEstadoPago', [
+                                    'pago_id' => $pago->id,
+                                    'transaction_id' => $pago->transaction_id,
+                                    'payment_status' => $paymentStatus,
+                                    'payment_date' => $paymentDate,
+                                    'payment_time' => $paymentTime
+                                ]);
+                            }
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('Error consultando estado en PagoFácil', [
+                        'transaction_id' => $pago->transaction_id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'pago' => [
+                    'id' => $pago->id,
+                    'venta_id' => $pago->venta_id,
+                    'referencia_externa' => $pago->referencia_externa,
+                    'transaction_id' => $pago->transaction_id,
+                    'estado' => $pago->estado,
+                    'monto' => $pago->monto,
+                    'fecha' => $pago->fecha,
+                    'fecha_pago' => $pago->fecha_pago,
+                    'metodo_pago' => $pago->metodo_pago
+                ],
+                'estado_pagofacil' => $estadoPagoFacil
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error obteniendo estado de pago', [
+                'referencia' => $request->input('referencia'),
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error interno del servidor'
+            ], 500);
+        }
+    }
+
+    /**
+     * Actualizar el estado del pedido cuando se completa un pago
+     */
+    private function actualizarEstadoPedido($pago)
+    {
+        try {
+            $venta = Venta::with('pedido')->find($pago->venta_id);
+
+            if (!$venta || !$venta->pedido) {
+                Log::warning('No se encontró venta o pedido asociado al pago', [
+                    'pago_id' => $pago->id,
+                    'venta_id' => $pago->venta_id
+                ]);
+                return false;
+            }
+
+            // Verificar si el pedido ya está completado
+            if ($venta->pedido->estado === 'COMPLETADO') {
+                Log::info('Pedido ya está marcado como COMPLETADO', [
+                    'pedido_id' => $venta->pedido->id,
+                    'pago_id' => $pago->id
+                ]);
+                return true;
+            }
+
+            // Actualizar el estado del pedido a COMPLETADO
+            $venta->pedido->update(['estado' => 'COMPLETADO']);
+
+            Log::info('Pedido actualizado como COMPLETADO', [
+                'pedido_id' => $venta->pedido->id,
+                'venta_id' => $venta->id,
+                'pago_id' => $pago->id,
+                'estado_anterior' => $venta->pedido->getOriginal('estado'),
+                'estado_nuevo' => 'COMPLETADO'
+            ]);
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Error al actualizar estado del pedido', [
+                'pago_id' => $pago->id,
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
+            ]);
+            return false;
+        }
+    }
+}
+
