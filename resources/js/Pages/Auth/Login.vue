@@ -131,7 +131,7 @@ onMounted(() => {
 
                             <div class="block mt-4">
                                 <label class="flex items-center">
-                                    <Checkbox v-model:checked="form.remember" name="remember" />
+                                    <Checkbox id="remember" v-model:checked="form.remember" name="remember" />
                                     <span class="ms-2 text-sm" style="color:#4B4B45">Recuérdame</span>
                                 </label>
                             </div>

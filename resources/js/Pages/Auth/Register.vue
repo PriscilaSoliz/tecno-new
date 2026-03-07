@@ -99,7 +99,7 @@ onMounted(() => {
                     <div class="mx-auto w-full max-w-md">
                         <h2 class="text-3xl font-bold tracking-tight text-center" :style="{ color: 'var(--text-primary)' }">Crear cuenta</h2>
                         <p class="mt-2 text-center text-sm" :style="{ color: 'var(--text-secondary)' }">
-                            Únete a Pan de Casa — recetas artesanales y pan fresco cada día.
+                            Recetas artesanales y pan fresco cada día.
                         </p>
 
                         <form @submit.prevent="submit" class="mt-8">

@@ -13,6 +13,18 @@
             </div>
         </template>
 
+        <!-- Mensaje de Éxito -->
+        <transition name="fade">
+            <div v-if="showSuccessMessage" class="fixed top-4 right-4 z-[100]">
+                <div class="bg-emerald-500 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center space-x-3 animate-fade-in border border-emerald-400">
+                    <div class="bg-white/20 p-1 rounded-full">
+                        <i class="fas fa-check text-sm"></i>
+                    </div>
+                    <span class="font-medium">{{ successMessage }}</span>
+                </div>
+            </div>
+        </transition>
+
         <div class="py-8">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg">
@@ -145,11 +157,25 @@
             </div>
         </div>
 
-        <!-- reemplazamos el modal inline por el componente -->
         <CreateIngredienteModal
             v-if="showCreateModal"
             @close="closeCreateModal"
             @created="onCreated"
+        />
+
+        <EntradaInsumoModal
+            :show="showEntradaModal"
+            :ingrediente="selectedIngrediente"
+            :proveedores="proveedores"
+            @close="showEntradaModal = false"
+            @success="showSuccessAlert"
+        />
+
+        <UpdateIngredienteModal
+            :show="showEditModal"
+            :ingrediente="selectedIngrediente"
+            @close="showEditModal = false"
+            @success="showSuccessAlert"
         />
     </AppLayout>
 </template>
@@ -159,6 +185,8 @@ import { ref, computed } from 'vue'
 import { router } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import CreateIngredienteModal from './Ingredientes/create.vue'
+import EntradaInsumoModal from './Ingredientes/EntradaInsumoModal.vue'
+import UpdateIngredienteModal from './Ingredientes/UpdateIngredienteModal.vue'
 
 const props = defineProps({
     ingredientes: {
@@ -169,6 +197,10 @@ const props = defineProps({
             { id: 2, nombre: 'Azúcar', unidad_medida: 'kg', descripcion: 'Azúcar refinada', is_active: true },
             { id: 3, nombre: 'Levadura', unidad_medida: 'g', descripcion: 'Levadura seca instantánea', is_active: false },
         ])
+    },
+    proveedores: {
+        type: Array,
+        default: () => []
     }
 })
 
@@ -193,23 +225,22 @@ const statusFilter = ref('')
 // modales + formularios
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
+const showEntradaModal = ref(false)
+const selectedIngrediente = ref(null)
 
-const editForm = ref({
-    id: null,
-    nombre: '',
-    unidad_medida: '',
-    descripcion: '',
-    is_active: true
-})
+const showSuccessMessage = ref(false)
+const successMessage = ref('')
+
 
 // === Métodos de acción (ejemplos) ===
 const registrarEntrada = (ingrediente) => {
-    router.get(route('almacen.ingredientes.entrada.create', { idIngrediente: ingrediente.id }))
+    selectedIngrediente.value = ingrediente
+    showEntradaModal.value = true
 }
 
 const editarIngrediente = (ingrediente) => {
-    // abrir modal de edición prefllado
-    openEditModal(ingrediente)
+    selectedIngrediente.value = ingrediente
+    showEditModal.value = true
 }
 
 const eliminarIngrediente = (ingrediente) => {
@@ -220,8 +251,7 @@ const eliminarIngrediente = (ingrediente) => {
     // eliminación permanente (destroy) -> llama al controlador
     router.delete(route('ingredientes.destroy', ingrediente.id), {
         onSuccess: () => {
-            // opcional: mostrar notificación o refrescar la lista
-            alert('Eliminado correctamente (backend)')
+            showSuccessAlert(`Insumo "${ingrediente.nombre}" eliminado correctamente`);
         },
         onError: (e) => {
             console.error('Error eliminando:', e)
@@ -233,14 +263,14 @@ const eliminarIngrediente = (ingrediente) => {
 const toggleActive = (ingrediente) => {
     const newState = !ingrediente.is_active
     // Usamos la ruta update para cambiar solo el flag is_active
-    router.put(route('ingredientes.update', ingrediente.id), {
+    router.put(route('almacen.ingredientes.update', ingrediente.id), {
         nombre: ingrediente.nombre,
         unidad_medida: ingrediente.unidad_medida,
         descripcion: ingrediente.descripcion,
         is_active: newState
     }, {
         onSuccess: () => {
-            // opcional: notificar
+            showSuccessAlert(`Insumo ${newState ? 'activado' : 'desactivado'} correctamente`);
         },
         onError: (e) => console.error('Error actualizando is_active', e)
     })
@@ -254,48 +284,26 @@ const closeCreateModal = () => {
     showCreateModal.value = false
 }
 
-const openEditModal = (ingrediente) => {
-    editForm.value = {
-        id: ingrediente.id,
-        nombre: ingrediente.nombre,
-        unidad_medida: ingrediente.unidad_medida,
-        descripcion: ingrediente.descripcion,
-        is_active: ingrediente.is_active
-    }
-    showEditModal.value = true
+const showSuccessAlert = (message) => {
+    successMessage.value = message
+    showSuccessMessage.value = true
+    setTimeout(() => {
+        showSuccessMessage.value = false
+    }, 4000)
 }
 
 const closeEditModal = () => {
     showEditModal.value = false
-    editForm.value = { id: null, nombre: '', unidad_medida: '', descripcion: '', is_active: true }
 }
 
 // nuevo handler cuando se crea correctamente
-const onCreated = () => {
-    // cerrar modal y mostrar notificación mínima
+const onCreated = (msg = null) => {
+    // cerrar modal y mostrar notificación
     showCreateModal.value = false
-    alert('Insumo creado correctamente')
-    // opcional: recargar la página o pedir datos al backend
-    // router.reload() // si deseas recargar datos desde el servidor
+    showSuccessAlert(msg || 'Insumo creado correctamente')
 }
 
-// Crear / Actualizar insumo -> envían payload acorde con la migración
-const updateIngrediente = async () => {
-    try {
-        const payload = {
-            nombre: editForm.value.nombre || 'Insumo Actualizado',
-            unidad_medida: editForm.value.unidad_medida || 'unidad',
-            descripcion: editForm.value.descripcion || '',
-            is_active: !!editForm.value.is_active
-        }
-        await router.put(route('ingredientes.update', editForm.value.id), payload, {
-            onSuccess: () => closeEditModal(),
-            onError: (errors) => console.error('Error actualizando ingrediente:', errors)
-        })
-    } catch (err) {
-        console.error(err)
-    }
-}
+// El modal de actualización ahora maneja esta lógica internamente
 
 // === Filtros y ordenamiento ===
 const normalizeText = (text) => {
