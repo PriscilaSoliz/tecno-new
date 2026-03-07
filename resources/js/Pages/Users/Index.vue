@@ -8,12 +8,17 @@ import InputLabel from '@/Components/InputLabel.vue';
 import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
-import DangerButton from '@/Components/DangerButton.vue';
 
 const props = defineProps({
-    users: Object,
+    users: Object, 
     roles: Array,
 });
+
+// Estados para búsqueda y ordenamiento 
+const searchQuery = ref('');
+const statusFilter = ref(''); 
+const sortField = ref('id');
+const sortDirection = ref('desc');
 
 // Filtrar roles para excluir 'encargadoalmacen'
 const filteredRoles = computed(() => {
@@ -35,7 +40,6 @@ const openModal = (user = null) => {
     if (user) {
         form.name = user.name;
         form.email = user.email;
-        // Asumiendo que el usuario tiene un rol asignado, tomamos el primero
         form.role = user.roles && user.roles.length ? user.roles[0].name : '';
         form.password = '';
     } else {
@@ -71,75 +75,147 @@ const deleteUser = (user) => {
         router.delete(route('users.destroy', user.id));
     }
 };
+
+const normalizeText = (text) => (text || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+const filteredUsers = computed(() => {
+    const searchNormalized = normalizeText(searchQuery.value);
+    
+    return props.users.data.filter(user => {
+        const nameNorm = normalizeText(user.name);
+        const emailNorm = normalizeText(user.email);
+        return nameNorm.includes(searchNormalized) || emailNorm.includes(searchNormalized);
+    });
+});
+
+const sortedUsers = computed(() => {
+    return [...filteredUsers.value].sort((a, b) => {
+        let aValue = a[sortField.value];
+        let bValue = b[sortField.value];
+
+        if (typeof aValue === 'string') {
+            aValue = aValue.toLowerCase();
+            bValue = bValue.toLowerCase();
+        }
+
+        if (aValue < bValue) return sortDirection.value === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortDirection.value === 'asc' ? 1 : -1;
+        return 0;
+    });
+});
+
+const sortBy = (field) => {
+    if (sortField.value === field) {
+        sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
+    } else {
+        sortField.value = field;
+        sortDirection.value = 'asc';
+    }
+};
 </script>
 
 <template>
     <AppLayout title="Gestión de Usuarios">
         <template #header>
-            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-                Gestión de Usuarios
-            </h2>
+            <div class="flex justify-between items-center">
+                <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                    Gestión de Usuarios
+                </h2>
+                <button 
+                    @click="openModal(null)"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center transition-colors shadow-sm text-sm font-semibold uppercase tracking-widest"
+                >
+                    <i class="fas fa-plus mr-2"></i>
+                    Nuevo Usuario
+                </button>
+            </div>
         </template>
 
-        <div class="py-12">
+        <div class="py-8">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xl sm:rounded-lg p-6">
-
-                    <!-- Header Actions -->
-                    <div class="flex justify-between items-center mb-6">
-                        <div class="text-gray-600 dark:text-gray-400">
-                            Administra los usuarios y sus roles.
+                <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg">
+                    
+                    <!-- Barra de Búsqueda y Filtros (Estilo Proveedores) -->
+                    <div class="p-6 border-b border-gray-200">
+                        <div class="flex flex-col md:flex-row gap-4">
+                            <div class="flex-1">
+                                <div class="relative">
+                                    <input 
+                                        type="text" 
+                                        v-model="searchQuery"
+                                        placeholder="Buscar usuarios por nombre o correo..." 
+                                        class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                                    >
+                                    <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                                </div>
+                            </div>
                         </div>
-                        <PrimaryButton @click="openModal(null)"
-                            class="bg-green-600 hover:bg-green-700 active:bg-green-800">
-                            <i class="fas fa-plus mr-2"></i> Nuevo Usuario
-                        </PrimaryButton>
                     </div>
 
-                    <!-- Table -->
+                    <!-- Table (Estilo Proveedores) -->
                     <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                            <thead class="bg-gray-50 dark:bg-gray-700">
+                        <table class="w-full">
+                            <thead class="bg-gray-50 text-gray-500">
                                 <tr>
-                                    <th scope="col"
-                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                        ID
+                                    <th 
+                                        class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                                        @click="sortBy('id')"
+                                    >
+                                        <div class="flex items-center">
+                                            ID
+                                            <i class="fas fa-sort ml-1 text-gray-400"></i>
+                                        </div>
                                     </th>
-                                    <th scope="col"
-                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                        Nombre
+                                    <th 
+                                        class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                                        @click="sortBy('name')"
+                                    >
+                                        <div class="flex items-center">
+                                            NOMBRE
+                                            <i class="fas fa-sort ml-1 text-gray-400"></i>
+                                        </div>
                                     </th>
-                                    <th scope="col"
-                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                        Correo
+                                    <th 
+                                        class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                                        @click="sortBy('email')"
+                                    >
+                                        <div class="flex items-center">
+                                            CORREO
+                                            <i class="fas fa-sort ml-1 text-gray-400"></i>
+                                        </div>
                                     </th>
-                                    <th scope="col"
-                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                        Rol
+                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                                        ROL
                                     </th>
-                                    <th scope="col"
-                                        class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                        Acciones
+                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                                        ACCIONES
                                     </th>
                                 </tr>
                             </thead>
-                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                <tr v-for="user in users.data" :key="user.id"
-                                    class="hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                        {{ user.id }}
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <tr v-for="user in sortedUsers" :key="user.id"
+                                    class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                        #{{ user.id }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                            {{ user.name }}
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                                                <i class="fas fa-user text-indigo-600"></i>
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-sm font-medium text-gray-900">
+                                                    {{ user.name }}
+                                                </div>
+                                            </div>
                                         </div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                         {{ user.email }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span v-for="role in user.roles" :key="role.id"
-                                            class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 mr-1">
+                                            class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 mr-1">
                                             {{ role.name }}
                                         </span>
                                         <span v-if="!user.roles || user.roles.length === 0"
@@ -147,73 +223,83 @@ const deleteUser = (user) => {
                                             Sin rol
                                         </span>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button @click="openModal(user)"
-                                            class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 mr-3"
-                                            title="Editar">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button @click="deleteUser(user)"
-                                            class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
-                                            title="Eliminar">
-                                            <i class="fas fa-trash-alt"></i>
-                                        </button>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <div class="flex space-x-3">
+                                            <button @click="openModal(user)"
+                                                class="text-blue-600 hover:text-blue-900 flex items-center transition-colors"
+                                                title="Editar">
+                                                <i class="fas fa-edit mr-1"></i> Editar
+                                            </button>
+                                            <button @click="deleteUser(user)"
+                                                class="text-red-600 hover:text-red-900 flex items-center transition-colors"
+                                                title="Eliminar">
+                                                <i class="fas fa-trash-alt mr-1"></i> Eliminar
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
-                                <tr v-if="users.data.length === 0">
-                                    <td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
-                                        No se encontraron usuarios.
+                                <tr v-if="sortedUsers.length === 0">
+                                    <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+                                        <i class="fas fa-inbox text-4xl mb-2 text-gray-300"></i>
+                                        <p>No se encontraron usuarios.</p>
                                     </td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
 
-                    <!-- Pagination -->
-                    <div class="mt-4" v-if="users.links && users.links.length > 3">
-                        <div class="flex flex-wrap -mb-1">
-                            <template v-for="(link, k) in users.links" :key="k">
-                                <div v-if="link.url === null"
-                                    class="mr-1 mb-1 px-4 py-3 text-sm leading-4 text-gray-400 border rounded"
-                                    v-html="link.label" />
-                                <a v-else
-                                    class="mr-1 mb-1 px-4 py-3 text-sm leading-4 border rounded hover:bg-white focus:border-indigo-500 focus:text-indigo-500"
-                                    :class="{ 'bg-blue-700 text-white': link.active }" :href="link.url"
-                                    v-html="link.label" />
-                            </template>
+                    <!-- Pagination (Estilo Proveedores) -->
+                    <div class="px-6 py-4 border-t border-gray-200" v-if="users.links && users.links.length > 3">
+                        <div class="flex items-center justify-between">
+                            <div class="text-sm text-gray-700">
+                                Mostrando {{ sortedUsers.length }} usuarios en esta página
+                            </div>
+                            <div class="flex flex-wrap -mb-1">
+                                <template v-for="(link, k) in users.links" :key="k">
+                                    <div v-if="link.url === null"
+                                        class="mr-1 mb-1 px-3 py-2 text-sm leading-4 text-gray-400 border rounded"
+                                        v-html="link.label" />
+                                    <a v-else
+                                        class="mr-1 mb-1 px-3 py-2 text-sm leading-4 border rounded hover:bg-gray-50 transition-colors focus:border-indigo-500 focus:text-indigo-500"
+                                        :class="{ 'bg-indigo-600 text-white hover:bg-indigo-700': link.active }" :href="link.url"
+                                        v-html="link.label" />
+                                </template>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Modal -->
+        <!-- Modal (Manteniendo funcionalidad original pero con estilos limpios) -->
         <DialogModal :show="showingModal" @close="closeModal">
             <template #title>
-                {{ editingUser ? 'Editar Usuario' : 'Nuevo Usuario' }}
+                <div class="text-lg font-bold text-gray-800">
+                    {{ editingUser ? 'Editar Usuario' : 'Nuevo Usuario' }}
+                </div>
             </template>
 
             <template #content>
-                <div class="grid grid-cols-1 gap-6">
+                <div class="grid grid-cols-1 gap-5 py-2">
                     <!-- Name -->
                     <div>
-                        <InputLabel for="name" value="Nombre Completo" />
-                        <TextInput id="name" v-model="form.name" type="text" class="mt-1 block w-full" autofocus />
+                        <InputLabel for="name" value="Nombre Completo" class="text-gray-700 font-semibold mb-1" />
+                        <TextInput id="name" v-model="form.name" type="text" class="mt-1 block w-full rounded-lg" placeholder="Ej. Juan Pérez" autofocus />
                         <InputError :message="form.errors.name" class="mt-2" />
                     </div>
 
                     <!-- Email -->
                     <div>
-                        <InputLabel for="email" value="Correo Electrónico" />
-                        <TextInput id="email" v-model="form.email" type="email" class="mt-1 block w-full" />
+                        <InputLabel for="email" value="Correo Electrónico" class="text-gray-700 font-semibold mb-1" />
+                        <TextInput id="email" v-model="form.email" type="email" class="mt-1 block w-full rounded-lg" placeholder="usuario@ejemplo.com" />
                         <InputError :message="form.errors.email" class="mt-2" />
                     </div>
 
                     <!-- Role -->
                     <div>
-                        <InputLabel for="role" value="Rol" />
+                        <InputLabel for="role" value="Rol" class="text-gray-700 font-semibold mb-1" />
                         <select id="role" v-model="form.role"
-                            class="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm">
+                            class="mt-1 block w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
                             <option value="">Seleccione un rol</option>
                             <option v-for="role in filteredRoles" :value="role.name" :key="role.id">
                                 {{ role.name }}
@@ -224,27 +310,38 @@ const deleteUser = (user) => {
 
                     <!-- Password -->
                     <div>
-                        <InputLabel for="password" value="Contraseña" />
-                        <TextInput id="password" v-model="form.password" type="password" class="mt-1 block w-full"
-                            placeholder="Dejar en blanco para mantener la actual" />
+                        <InputLabel for="password" value="Contraseña" class="text-gray-700 font-semibold mb-1" />
+                        <TextInput id="password" v-model="form.password" type="password" class="mt-1 block w-full rounded-lg"
+                            :placeholder="editingUser ? 'Dejar en blanco para mantener la actual' : 'Mínimo 8 caracteres'" />
                         <InputError :message="form.errors.password" class="mt-2" />
-                        <p v-if="editingUser" class="text-xs text-gray-500 mt-1">
-                            Solo llena este campo si deseas cambiar la contraseña.
-                        </p>
                     </div>
                 </div>
             </template>
 
             <template #footer>
-                <SecondaryButton @click="closeModal">
-                    Cancelar
-                </SecondaryButton>
+                <div class="flex space-x-3">
+                    <SecondaryButton @click="closeModal" class="rounded-lg">
+                        Cancelar
+                    </SecondaryButton>
 
-                <PrimaryButton class="ml-3 bg-green-600 hover:bg-green-700 active:bg-green-800"
-                    :class="{ 'opacity-25': form.processing }" :disabled="form.processing" @click="save">
-                    {{ editingUser ? 'Actualizar' : 'Guardar' }}
-                </PrimaryButton>
+                    <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-bold transition-all shadow-md active:scale-95 disabled:opacity-50"
+                        :class="{ 'opacity-25': form.processing }" :disabled="form.processing" @click="save">
+                        {{ editingUser ? 'Actualizar Usuario' : 'Registrar Usuario' }}
+                    </button>
+                </div>
             </template>
         </DialogModal>
     </AppLayout>
 </template>
+
+<style scoped>
+@keyframes fade-in {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+tr {
+    animation: fade-in 0.3s ease-out;
+}
+</style>
+

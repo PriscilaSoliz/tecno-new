@@ -29,19 +29,11 @@ class InventarioController extends Controller
         }
 
         $ingredientes = $query->get();
-        // La variable $ingredientes debe contener todos los registros de la tabla 'ingredientes'.
-        // Ejemplo de estructura esperada para un ingrediente:
-        // [
-        //     'id' => 1,
-        //     'nombre' => 'Harina',
-        //     'unidad_medida' => 'Kg',
-        //     'descripcion' => 'Harina de trigo para panadería',
-        //     'is_active' => true,
-        //     'created_at' => '2023-01-01 10:00:00',
-        //     'updated_at' => '2023-01-01 10:00:00',
-        // ]
+        $proveedores = Proveedor::all();
+
         return Inertia::render('Inventario/Almacen/index', [
             'ingredientes' => $ingredientes,
+            'proveedores' => $proveedores,
             'filters' => $request->only(['search']),
         ]);
     }
@@ -151,7 +143,28 @@ class InventarioController extends Controller
 
         $lote->decrement('cantidad_disponible_x_unidad', $request->cantidad);
 
-        return redirect()->route('almacen.index')->with('success', 'Salida de insumo registrada correctamente.');
     }
 
+    public function updateIngrediente(Request $request, $id)
+    {
+        $request->validate([
+            'nombre' => 'required|string|max:255',
+            'unidad_medida' => 'required|string',
+            'descripcion' => 'nullable|string',
+            'is_active' => 'required|boolean'
+        ]);
+
+        $ingrediente = Ingrediente::findOrFail($id);
+        $ingrediente->update($request->all());
+
+        return redirect()->route('almacen.index')->with('success', 'Insumo actualizado correctamente.');
+    }
+
+    public function destroyIngrediente($id)
+    {
+        $ingrediente = Ingrediente::findOrFail($id);
+        $ingrediente->delete();
+
+        return redirect()->route('almacen.index')->with('success', 'Insumo eliminado correctamente.');
+    }
 }
