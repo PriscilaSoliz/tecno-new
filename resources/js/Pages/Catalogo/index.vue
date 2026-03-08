@@ -119,7 +119,7 @@ const irAVenta = () => {
             </div>
         </template>
 
-        <div class="py-8 bg-gradient-to-br from-amber-50 via-white to-emerald-50 min-h-screen relative">
+        <div class="py-8 bg-gradient-to-br from-amber-50 via-white to-emerald-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 min-h-screen relative">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
                 <!-- Buscador -->
@@ -211,6 +211,7 @@ const irAVenta = () => {
 .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }

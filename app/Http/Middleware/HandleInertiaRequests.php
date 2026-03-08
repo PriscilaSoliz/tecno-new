@@ -75,6 +75,7 @@ class HandleInertiaRequests extends Middleware
             ],
             'menuItems' => $menuItems,
             'pageVisits' => (int) $pageVisits,
+            'stripe_key' => config('services.stripe.key'),
         ];
     }
 }

@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
 import Checkbox from '@/Components/Checkbox.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
@@ -11,9 +11,21 @@ import { useAccessibility } from '@/Composables/useAccessibility';
 const form = useForm({
     name: '',
     email: '',
+    telefono: '',
     password: '',
     password_confirmation: '',
     terms: false,
+});
+
+const showPassword = ref(false);
+const showConfirmPassword = ref(false);
+
+const passwordMismatch = computed(() => {
+    return form.password_confirmation && form.password !== form.password_confirmation;
+});
+
+const phoneInvalid = computed(() => {
+    return form.telefono && form.telefono.length > 0 && form.telefono.length !== 8;
 });
 
 const submit = () => {
@@ -77,9 +89,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <Head title="Registro - Pan de Casa">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    </Head>
+    <Head title="Registro - Pan de Casa" />
 
     <div class="min-h-screen" :style="{ backgroundColor: 'var(--bg-light)', color: 'var(--text-primary)' }">
         <header class="absolute inset-x-0 top-0 z-50">
@@ -115,17 +125,49 @@ onMounted(() => {
                                 <InputError class="mt-2" :message="form.errors.email" />
                             </div>
 
+                            <div class="mt-4">
+                                <InputLabel for="telefono" value="Teléfono" style="color:#6B4226" />
+                                <TextInput id="telefono" v-model="form.telefono" type="text" class="mt-1 block w-full"
+                                    placeholder="Ej. 70000000" maxlength="8"
+                                    @keypress="(e) => { if (!/[0-9]/.test(e.key)) e.preventDefault(); }"
+                                    @input="form.telefono = form.telefono.replace(/\D/g, '')" />
+                                <InputError v-if="phoneInvalid" class="mt-2" message="El teléfono debe tener exactamente 8 dígitos" />
+                                <InputError v-else class="mt-2" :message="form.errors.telefono" />
+                            </div>
+
                             <div class="mt-4 lg:flex lg:gap-4">
                                 <div class="lg:flex-1">
                                     <InputLabel for="password" value="Contraseña" style="color:#6B4226" />
-                                    <TextInput id="password" v-model="form.password" type="password" class="mt-1 block w-full" required autocomplete="new-password" />
+                                    <div class="relative">
+                                        <TextInput id="password" v-model="form.password"
+                                            :type="showPassword ? 'text' : 'password'" class="mt-1 block w-full pr-10"
+                                            required autocomplete="new-password" />
+                                        <button type="button"
+                                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 z-20"
+                                            @click="showPassword = !showPassword">
+                                            <i class="fa-solid" :class="showPassword ? 'fa-eye-slash' : 'fa-eye'"
+                                                style="color: #6B4226;"></i>
+                                        </button>
+                                    </div>
                                     <InputError class="mt-2" :message="form.errors.password" />
                                 </div>
 
                                 <div class="mt-4 lg:mt-0 lg:flex-1">
-                                    <InputLabel for="password_confirmation" value="Confirmar Contraseña" style="color:#6B4226" />
-                                    <TextInput id="password_confirmation" v-model="form.password_confirmation" type="password" class="mt-1 block w-full" required autocomplete="new-password" />
-                                    <InputError class="mt-2" :message="form.errors.password_confirmation" />
+                                    <InputLabel for="password_confirmation" value="Confirmar Contraseña"
+                                        style="color:#6B4226" />
+                                    <div class="relative">
+                                        <TextInput id="password_confirmation" v-model="form.password_confirmation"
+                                            :type="showConfirmPassword ? 'text' : 'password'"
+                                            class="mt-1 block w-full pr-10" required autocomplete="new-password" />
+                                        <button type="button"
+                                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 z-20"
+                                            @click="showConfirmPassword = !showConfirmPassword">
+                                            <i class="fa-solid" :class="showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'"
+                                                style="color: #6B4226;"></i>
+                                        </button>
+                                    </div>
+                                    <InputError v-if="passwordMismatch" class="mt-2" message="Las contraseñas no coinciden" />
+                                    <InputError v-else class="mt-2" :message="form.errors.password_confirmation" />
                                 </div>
                             </div>
 

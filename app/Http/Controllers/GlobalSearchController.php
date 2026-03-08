@@ -7,6 +7,9 @@ use App\Models\User;
 use App\Models\Producto;
 use App\Models\Ingrediente;
 use App\Models\Pedido;
+use App\Models\Proveedor;
+use App\Models\Receta;
+use App\Models\OrdenProduccion;
 use Illuminate\Support\Facades\Auth;
 
 class GlobalSearchController extends Controller
@@ -31,8 +34,8 @@ class GlobalSearchController extends Controller
 
         // 1. Usuarios - Solo propietario
         if ($isPropietario) {
-            $users = User::where('name', 'LIKE', "%{$query}%")
-                ->orWhere('email', 'LIKE', "%{$query}%")
+            $users = User::where('name', 'ILIKE', "%{$query}%")
+                ->orWhere('email', 'ILIKE', "%{$query}%")
                 ->limit(5)
                 ->get()
                 ->map(function ($item) {
@@ -49,7 +52,7 @@ class GlobalSearchController extends Controller
         }
 
         // 2. Productos
-        $products = Producto::where('nombre', 'LIKE', "%{$query}%")
+        $products = Producto::where('nombre', 'ILIKE', "%{$query}%")
             ->limit(5)
             ->get()
             ->map(function ($item) use ($isCliente) {
@@ -73,7 +76,7 @@ class GlobalSearchController extends Controller
 
         // 3. Inventario (Ingredientes) - Solo propietario y encargado de almacén
         if ($isPropietario || $isEncargadoAlmacen) {
-            $ingredients = Ingrediente::where('nombre', 'LIKE', "%{$query}%")
+            $ingredients = Ingrediente::where('nombre', 'ILIKE', "%{$query}%")
                 ->limit(5)
                 ->get()
                 ->map(function ($item) {
@@ -97,8 +100,11 @@ class GlobalSearchController extends Controller
                     $q->where('user_id', $user->id);
                 })
                 ->where(function ($q) use ($query) {
-                    $q->where('id', 'LIKE', "%{$query}%")
-                        ->orWhere('estado_produccion', 'LIKE', "%{$query}%");
+                    if (is_numeric($query)) {
+                        $q->where('id', $query)->orWhere('estado_produccion', 'ILIKE', "%{$query}%");
+                    } else {
+                        $q->where('estado_produccion', 'ILIKE', "%{$query}%");
+                    }
                 })
                 ->limit(5)
                 ->get()
@@ -116,9 +122,16 @@ class GlobalSearchController extends Controller
         } else if ($isPropietario || $isEncargadoAlmacen || $isProduccion) {
             // Admin: Todos los pedidos
             $pedidos = Pedido::with('cliente.user')
-                ->where('id', 'LIKE', "%{$query}%")
-                ->orWhereHas('cliente.user', function ($q) use ($query) {
-                    $q->where('name', 'LIKE', "%{$query}%");
+                ->where(function ($q) use ($query) {
+                    if (is_numeric($query)) {
+                        $q->where('id', $query)->orWhereHas('cliente.user', function ($q2) use ($query) {
+                            $q2->where('name', 'ILIKE', "%{$query}%");
+                        });
+                    } else {
+                        $q->whereHas('cliente.user', function ($q2) use ($query) {
+                            $q2->where('name', 'ILIKE', "%{$query}%");
+                        });
+                    }
                 })
                 ->limit(5)
                 ->get()
@@ -136,6 +149,73 @@ class GlobalSearchController extends Controller
                     ];
                 });
             $results = $results->merge($pedidos);
+        }
+
+        // 5. Proveedores
+        if ($isPropietario || $isEncargadoAlmacen || $isProduccion) {
+            $proveedores = Proveedor::where('empresa', 'ILIKE', "%{$query}%")
+                ->orWhere('contacto', 'ILIKE', "%{$query}%")
+                ->limit(5)
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'title' => $item->empresa,
+                        'subtitle' => 'Proveedor - ' . $item->contacto,
+                        'category' => 'Proveedores',
+                        'icon' => 'fas fa-truck-loading',
+                        'url' => route('proveedores.index'), // Vue handling frontend search
+                    ];
+                });
+            $results = $results->merge($proveedores);
+        }
+
+        // 6. Recetas
+        if ($isPropietario || $isProduccion) {
+            $recetas = Receta::with('producto')
+                ->whereHas('producto', function ($q) use ($query) {
+                    $q->where('nombre', 'ILIKE', "%{$query}%");
+                })
+                ->limit(5)
+                ->get()
+                ->unique('producto_id')
+                ->values()
+                ->map(function ($item) {
+                    $nombre = $item->producto ? $item->producto->nombre : 'Desconocido';
+                    return [
+                        'id' => $item->producto_id,
+                        'title' => $nombre,
+                        'subtitle' => 'Receta de Producción',
+                        'category' => 'Recetas',
+                        'icon' => 'fas fa-book-open',
+                        'url' => route('recetas.index'), // Vue handling frontend search
+                    ];
+                });
+            $results = $results->merge($recetas);
+        }
+
+        // 7. Órdenes de Producción
+        if ($isPropietario || $isProduccion) {
+            $ordenes = OrdenProduccion::where(function ($q) use ($query) {
+                    if (is_numeric($query)) {
+                        $q->where('id', $query)->orWhere('estado', 'ILIKE', "%{$query}%");
+                    } else {
+                        $q->where('estado', 'ILIKE', "%{$query}%");
+                    }
+                })
+                ->limit(5)
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'title' => "Orden #" . $item->id,
+                        'subtitle' => "Estado: " . ucfirst($item->estado),
+                        'category' => 'Producción',
+                        'icon' => 'fas fa-industry',
+                        'url' => route('ordenes.index'), // Vue handling frontend search
+                    ];
+                });
+            $results = $results->merge($ordenes);
         }
 
         return response()->json($results);

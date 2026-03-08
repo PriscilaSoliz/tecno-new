@@ -33,11 +33,11 @@ const ver = p => router.get(route('cliente.pedidos.show', p.id));
     <div class="py-8 max-w-7xl mx-auto sm:px-6 lg:px-8">
       <div class="bg-white shadow sm:rounded-lg p-6 mb-6">
         <h3 class="font-bold mb-3 text-lg text-amber-700 border-b pb-2">En curso</h3>
-        <ListaPedidos :items="filtrar(props.enCurso)" @ver="ver" />
+        <ListaPedidos :items="filtrar(props.enCurso)" :showCliente="false" @ver="ver" />
       </div>
       <div class="bg-white shadow sm:rounded-lg p-6">
         <h3 class="font-bold mb-3 text-lg text-gray-700 border-b pb-2">Historial</h3>
-        <ListaPedidos :items="filtrar(props.realizados)" @ver="ver" />
+        <ListaPedidos :items="filtrar(props.realizados)" :showCliente="false" @ver="ver" />
       </div>
     </div>
   </AppLayout>

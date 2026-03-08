@@ -116,57 +116,57 @@ const confirmar = () => {
         </template>
 
         <template #content>
-            <div class="mb-4 bg-blue-50 p-3 rounded-lg text-sm text-blue-700">
+            <div class="mb-4 bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg text-sm text-blue-700 dark:text-blue-200">
                 <i class="fas fa-info-circle mr-2"></i>
                 La <strong>Cuota 1</strong> debe pagarse ahora para confirmar el pedido.
                 El resto debe completarse en un plazo máximo de <strong>30 días</strong>.
             </div>
 
-            <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-lg">
-                <table class="min-w-full divide-y divide-gray-300">
-                    <thead class="bg-gray-50">
+            <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 dark:ring-white dark:ring-opacity-10 rounded-lg">
+                <table class="min-w-full divide-y divide-gray-300 dark:divide-gray-700">
+                    <thead class="bg-gray-50 dark:bg-gray-800">
                         <tr>
-                            <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">#
+                            <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">#
                             </th>
-                            <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Fecha
+                            <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Fecha
                                 Vencimiento</th>
-                            <th scope="col" class="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">Monto
+                            <th scope="col" class="px-3 py-3.5 text-right text-sm font-semibold text-gray-900 dark:text-gray-100">Monto
                             </th>
-                            <th scope="col" class="px-3 py-3.5 text-center text-sm font-semibold text-gray-900">Estado
+                            <th scope="col" class="px-3 py-3.5 text-center text-sm font-semibold text-gray-900 dark:text-gray-100">Estado
                             </th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-200 bg-white">
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-900">
                         <tr v-for="(item, index) in items" :key="index">
-                            <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900">{{
+                            <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 dark:text-gray-200">{{
                                 item.numero }}</td>
-                            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                                <div v-if="index === 0" class="font-bold text-gray-700">
+                            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                <div v-if="index === 0" class="font-bold text-gray-700 dark:text-gray-300">
                                     Hoy ({{ formatDate(item.fecha) }})
                                 </div>
                                 <div v-else>
                                     <input type="date" v-model="item.fecha" :min="items[index - 1]?.fecha"
-                                        class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6">
+                                        class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-700 dark:bg-gray-800 dark:text-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6">
                                     <p v-if="item.error" class="text-red-500 text-xs mt-1">{{ item.error }}</p>
                                 </div>
                             </td>
-                            <td class="whitespace-nowrap px-3 py-4 text-sm text-right text-gray-900 font-mono">
+                            <td class="whitespace-nowrap px-3 py-4 text-sm text-right text-gray-900 dark:text-gray-100 font-mono">
                                 Bs {{ item.monto.toFixed(2) }}
                             </td>
                             <td class="whitespace-nowrap px-3 py-4 text-sm text-center">
                                 <span v-if="index === 0"
-                                    class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">Pago
+                                    class="inline-flex items-center rounded-md bg-green-50 dark:bg-green-900/30 px-2 py-1 text-xs font-medium text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20">Pago
                                     Inicial</span>
                                 <span v-else
-                                    class="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">Pendiente</span>
+                                    class="inline-flex items-center rounded-md bg-yellow-50 dark:bg-yellow-900/30 px-2 py-1 text-xs font-medium text-yellow-800 dark:text-yellow-400 ring-1 ring-inset ring-yellow-600/20">Pendiente</span>
                             </td>
                         </tr>
                     </tbody>
-                    <tfoot class="bg-gray-50">
+                    <tfoot class="bg-gray-50 dark:bg-gray-800">
                         <tr>
-                            <td colspan="2" class="py-3 pl-4 pr-3 text-right text-sm font-semibold text-gray-900">Total:
+                            <td colspan="2" class="py-3 pl-4 pr-3 text-right text-sm font-semibold text-gray-900 dark:text-gray-100">Total:
                             </td>
-                            <td class="px-3 py-3 text-right text-sm font-bold text-gray-900">Bs {{ total.toFixed(2) }}
+                            <td class="px-3 py-3 text-right text-sm font-bold text-gray-900 dark:text-gray-100">Bs {{ total.toFixed(2) }}
                             </td>
                             <td></td>
                         </tr>

@@ -75,7 +75,15 @@ const eliminar = (id) => {
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 text-gray-600 dark:text-gray-400">
-                                            {{ orden.operario ? `${orden.operario.turno} - ${orden.operario.especialidad}` : 'Sin asignar' }}
+                                            <div v-if="orden.operario">
+                                                <div class="font-medium text-gray-900 dark:text-gray-100">
+                                                    {{ orden.operario.user?.name || 'Operario' }}
+                                                </div>
+                                                <div class="text-xs">
+                                                    {{ orden.operario.turno }} - {{ orden.operario.especialidad }}
+                                                </div>
+                                            </div>
+                                            <span v-else>Sin asignar</span>
                                         </td>
                                         <td class="px-6 py-4 text-gray-600 dark:text-gray-400">
                                             {{ new Date(orden.fecha_creacion).toLocaleDateString() }}

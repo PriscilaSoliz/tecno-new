@@ -11,6 +11,7 @@ const emit = defineEmits(['close','created']);
 const form = useForm({
   producto_id: props.products[0]?.id ?? null,
   cantidad_a_producir: 1,
+  operario_id: '',
 });
 
 const selectedProduct = computed(() => props.products.find(p => p.id === Number(form.producto_id)) || null);
@@ -108,6 +109,17 @@ const close = () => emit('close');
         <div>
           <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Cantidad a producir *</label>
           <input type="number" min="1" v-model="form.cantidad_a_producir" required class="w-full border dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-3 py-2 focus:ring-2 focus:ring-amber-500" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Asignar Operario</label>
+          <select v-model="form.operario_id" class="w-full border dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 rounded focus:ring-2 focus:ring-amber-500">
+            <option value="">Selección automática (Tú)</option>
+            <option v-for="op in props.operarios" :key="op.id" :value="op.id">
+                {{ op.user?.name }} ({{ op.turno }} - {{ op.especialidad }})
+            </option>
+          </select>
+          <p class="text-xs text-gray-500 mt-1 italic">Si se deja vacío, se asignará al usuario actual.</p>
         </div>
 
         <!-- Preview de recetas + asignación por lotes -->

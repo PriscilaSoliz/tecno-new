@@ -32,7 +32,12 @@ const form = useForm({
     name: '',
     email: '',
     role: '',
+    telefono: '',
     password: '',
+});
+
+const phoneInvalid = computed(() => {
+    return form.telefono && form.telefono.length > 0 && form.telefono.length !== 8;
 });
 
 const openModal = (user = null) => {
@@ -41,6 +46,7 @@ const openModal = (user = null) => {
         form.name = user.name;
         form.email = user.email;
         form.role = user.roles && user.roles.length ? user.roles[0].name : '';
+        form.telefono = user.telefono || '';
         form.password = '';
     } else {
         form.reset();
@@ -185,6 +191,9 @@ const sortBy = (field) => {
                                         </div>
                                     </th>
                                     <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                                        TELÉFONO
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                                         ROL
                                     </th>
                                     <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
@@ -213,6 +222,9 @@ const sortBy = (field) => {
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                         {{ user.email }}
                                     </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                        {{ user.telefono || 'No registrado' }}
+                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span v-for="role in user.roles" :key="role.id"
                                             class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 mr-1">
@@ -239,7 +251,7 @@ const sortBy = (field) => {
                                     </td>
                                 </tr>
                                 <tr v-if="sortedUsers.length === 0">
-                                    <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+                                    <td colspan="6" class="px-6 py-8 text-center text-gray-500">
                                         <i class="fas fa-inbox text-4xl mb-2 text-gray-300"></i>
                                         <p>No se encontraron usuarios.</p>
                                     </td>
@@ -306,6 +318,17 @@ const sortBy = (field) => {
                             </option>
                         </select>
                         <InputError :message="form.errors.role" class="mt-2" />
+                    </div>
+
+                    <!-- Telefono -->
+                    <div>
+                        <InputLabel for="telefono" value="Teléfono" class="text-gray-700 font-semibold mb-1" />
+                        <TextInput id="telefono" v-model="form.telefono" type="text" class="mt-1 block w-full rounded-lg"
+                            placeholder="Ej. 70000000" maxlength="8"
+                            @keypress="(e) => { if (!/[0-9]/.test(e.key)) e.preventDefault(); }"
+                            @input="form.telefono = form.telefono.replace(/\D/g, '')" />
+                        <InputError v-if="phoneInvalid" class="mt-2" message="El teléfono debe tener exactamente 8 dígitos" />
+                        <InputError v-else :message="form.errors.telefono" class="mt-2" />
                     </div>
 
                     <!-- Password -->

@@ -25,8 +25,10 @@ const filtered = computed(() => {
   const q = (search.value || '').toLowerCase();
   if (q) {
     result = result.filter(p => {
-      const cliente = (p.cliente?.nombre || p.cliente?.name || '').toLowerCase();
-      return cliente.includes(q) || String(p.id) === q;
+      const name = p.cliente?.user?.name || '';
+      const razon = p.cliente?.razon_social || '';
+      const combined = (name + ' ' + razon).toLowerCase();
+      return combined.includes(q) || String(p.id) === q;
     });
   }
 

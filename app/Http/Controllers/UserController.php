@@ -46,15 +46,25 @@ class UserController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
             'role' => 'required|exists:roles,name',
+            'telefono' => 'nullable|digits:8',
         ]);
 
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
+            'telefono' => $request->telefono,
             'password' => Hash::make($request->password),
         ]);
 
         $user->assignRole($request->role);
+
+        // Si el rol es producción, asegurar registro en la tabla operarios
+        if ($request->role === 'produccion') {
+            \App\Models\Operario::firstOrCreate(
+                ['user_id' => $user->id],
+                ['turno' => 'Mañana', 'especialidad' => 'General']
+            );
+        }
 
         return redirect()->back()->with('success', 'Usuario creado exitosamente.');
     }
@@ -69,11 +79,13 @@ class UserController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'role' => 'required|exists:roles,name',
             'password' => 'nullable|string|min:8',
+            'telefono' => 'nullable|digits:8',
         ]);
 
         $user->update([
             'name' => $request->name,
             'email' => $request->email,
+            'telefono' => $request->telefono,
         ]);
 
         if ($request->filled('password')) {
@@ -83,6 +95,14 @@ class UserController extends Controller
         }
 
         $user->syncRoles([$request->role]);
+
+        // Sincronizar con tabla operarios
+        if ($request->role === 'produccion') {
+            \App\Models\Operario::firstOrCreate(
+                ['user_id' => $user->id],
+                ['turno' => 'Mañana', 'especialidad' => 'General']
+            );
+        }
 
         return redirect()->back()->with('success', 'Usuario actualizado exitosamente.');
     }

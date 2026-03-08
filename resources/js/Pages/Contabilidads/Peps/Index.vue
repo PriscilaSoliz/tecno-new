@@ -160,12 +160,11 @@ const downloadPDF = () => {
                                             :class="row.tipo === 'ENTRADA' ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'">
                                             {{ row.tipo === 'ENTRADA' ? '+' : '-' }}{{ row.cantidad }}
                                         </td>
-                                        <td class="px-6 py-3 text-right text-gray-900 dark:text-gray-100">${{ Number(row.precio_unitario).toFixed(2) }}</td>
                                         <td class="px-6 py-3 text-right text-gray-900 dark:text-gray-100">Bs {{ Number(row.precio_unitario).toFixed(2) }}</td>
-                                        <td class="px-6 py-3 text-right">Bs {{ Number(row.precio_unitario).toFixed(2) }}</td>
+                                        <td class="px-6 py-3 text-right text-gray-900 dark:text-gray-100">Bs {{ Number(row.total).toFixed(2) }}</td>
                                         <td class="px-6 py-3 text-center bg-blue-50/50 dark:bg-blue-900/10 font-bold text-blue-700 dark:text-blue-400">{{ row.existencia_lote }}</td>
                                         <td class="px-6 py-3 text-center bg-amber-50/50 dark:bg-amber-900/10 font-bold text-gray-900 dark:text-gray-100">{{ row.saldo_cantidad }}</td>
-                                        <td class="px-6 py-3 text-right bg-amber-50/50 dark:bg-amber-900/10 font-bold text-amber-700 dark:text-amber-400">${{ Number(row.saldo_total).toFixed(2) }}</td>
+                                        <td class="px-6 py-3 text-right bg-amber-50/50 dark:bg-amber-900/10 font-bold text-amber-700 dark:text-amber-400">Bs {{ Number(row.saldo_total).toFixed(2) }}</td>
                                     </tr>
                                     <tr v-if="kardex.length === 0">
                                         <td colspan="8" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
@@ -187,7 +186,7 @@ const downloadPDF = () => {
                                 </div>
                                 <div class="text-center">
                                     <p class="text-emerald-100 dark:text-emerald-200 text-sm uppercase tracking-wide mb-2">Valor de Inventario</p>
-                                    <p class="text-4xl font-bold">${{ Number(valorInventario).toFixed(2) }}</p>
+                                    <p class="text-4xl font-bold">Bs {{ Number(valorInventario).toFixed(2) }}</p>
                                     <p class="text-emerald-200 dark:text-emerald-300 text-sm mt-1">Según método PEPS</p>
                                 </div>
                             </div>

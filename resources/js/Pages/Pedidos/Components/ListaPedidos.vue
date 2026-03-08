@@ -1,5 +1,8 @@
 <script setup>
-const props = defineProps({ items: { type: Array, default: () => [] } });
+const props = defineProps({
+  items: { type: Array, default: () => [] },
+  showCliente: { type: Boolean, default: true }
+});
 const emit = defineEmits(['ver', 'quick']);
 
 const estadoColor = {
@@ -33,7 +36,8 @@ const canAdvance = userRoles.some(r => ['propietario', 'encargadoalmacen', 'prod
     <thead class="bg-gray-50 dark:bg-gray-700">
       <tr>
         <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase">ID</th>
-        <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase">Cliente</th>
+        <th v-if="showCliente" class="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase">
+          Cliente</th>
         <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase">Fecha</th>
         <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase">Total</th>
         <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase">Estado</th>
@@ -43,7 +47,8 @@ const canAdvance = userRoles.some(r => ['propietario', 'encargadoalmacen', 'prod
     <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
       <tr v-for="p in items" :key="p.id" class="hover:bg-gray-50 dark:hover:bg-gray-700 transition">
         <td class="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">#{{ p.id }}</td>
-        <td class="px-4 py-3 text-gray-700 dark:text-gray-300">{{ p.cliente?.nombre || p.cliente?.name || 'Cliente' }}
+        <td v-if="showCliente" class="px-4 py-3 text-gray-700 dark:text-gray-300">
+          {{ p.cliente?.user?.name || p.cliente?.razon_social || 'Cliente' }}
         </td>
         <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ new Date(p.created_at).toLocaleString() }}</td>
         <td class="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">Bs {{ Number(p.total).toFixed(2) }}</td>
@@ -73,7 +78,7 @@ const canAdvance = userRoles.some(r => ['propietario', 'encargadoalmacen', 'prod
         </td>
       </tr>
       <tr v-if="items.length === 0">
-        <td colspan="6" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+        <td :colspan="showCliente ? 6 : 5" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
           <i class="fa-solid fa-inbox text-4xl mb-2 text-gray-300"></i>
           <p>Sin pedidos</p>
         </td>

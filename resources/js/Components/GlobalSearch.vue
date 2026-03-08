@@ -71,37 +71,39 @@ onClickOutside(searchContainer, () => {
 
 <template>
     <div ref="searchContainer" class="relative flex items-center">
-        <!-- Icon Button (Visible when collapsed) -->
-        <button v-if="!isExpanded" @click="expandSearch"
-            class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none transition-colors duration-200"
+        <!-- Icon Button (Always keeps its spot in navbar) -->
+        <button @click="isExpanded ? (isExpanded = false, isOpen = false) : expandSearch()"
+            :class="isExpanded ? 'bg-gray-100 dark:bg-gray-700 text-indigo-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
+            class="p-2 rounded-lg focus:outline-none transition-colors duration-200 flex items-center justify-center"
             title="Buscar (Ctrl+K)">
             <i class="fas fa-search text-lg"></i>
         </button>
 
-        <!-- Expanded Search Input -->
-        <div v-show="isExpanded" class="relative transition-all duration-300 ease-in-out origin-right"
-            :class="{ 'w-64 opacity-100': isExpanded, 'w-0 opacity-0': !isExpanded }">
-            <div class="relative">
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        <!-- Expanded Search Input (Dropdown) -->
+        <div v-show="isExpanded" class="absolute right-0 top-full mt-4 w-72 sm:w-96 z-50 origin-top-right transition-all duration-200"
+            :class="{ 'opacity-100 scale-100': isExpanded, 'opacity-0 scale-95 pointer-events-none': !isExpanded }">
+            <div class="relative shadow-lg ring-1 ring-black ring-opacity-5 dark:ring-white dark:ring-opacity-10 rounded-lg bg-white dark:bg-gray-800">
+                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <i class="fas fa-search text-gray-400"></i>
                 </div>
                 <input ref="searchInput" type="text" v-model="query"
-                    class="block w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-700 rounded-lg leading-5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 sm:text-sm shadow-sm transition duration-150 ease-in-out"
-                    placeholder="Buscar..." />
-                <!-- Close Button inside input -->
-                <button v-if="query.length > 0 || isExpanded" @click="query = ''; isExpanded = false; isOpen = false;"
-                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 cursor-pointer">
+                    class="block w-full pl-11 pr-11 py-3 border-0 border-b border-gray-100 dark:border-gray-700 rounded-t-lg bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:ring-0 focus:outline-none sm:text-sm"
+                    placeholder="Buscar todo..." />
+                
+                <!-- Close/Clear Button inside input -->
+                <button v-if="query.length > 0" @click="query = ''; searchInput.focus();"
+                    class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer transition-colors">
                     <i class="fas fa-times"></i>
                 </button>
 
-                <div v-if="isLoading" class="absolute inset-y-0 right-8 flex items-center">
+                <div v-if="isLoading" class="absolute inset-y-0 right-10 flex items-center">
                     <i class="fas fa-spinner fa-spin text-gray-400"></i>
                 </div>
             </div>
 
-            <!-- Results Dropdown -->
+            <!-- Results Dropdown (Attached directly below) -->
             <div v-if="isOpen && results.length > 0"
-                class="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 shadow-xl rounded-lg py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto max-h-96 focus:outline-none z-50 text-left origin-top-right">
+                class="absolute left-0 w-full bg-white dark:bg-gray-800 shadow-xl rounded-b-lg py-1 text-base ring-1 ring-black ring-opacity-5 dark:ring-white dark:ring-opacity-10 overflow-auto max-h-96 focus:outline-none z-50 text-left border-t-0">
                 <div v-for="(group, category) in results.reduce((acc, item) => {
                     (acc[item.category] = acc[item.category] || []).push(item);
                     return acc;

@@ -25,7 +25,7 @@ class OrdenController extends Controller
         if (! $request) {
             $request = request();
         }
-        $query = OrdenProduccion::with(['producto', 'operario']);
+        $query = OrdenProduccion::with(['producto', 'operario.user']);
 
         if ($request->filled('estado')) {
             $query->where('estado', $request->estado);
@@ -39,7 +39,7 @@ class OrdenController extends Controller
                   ->orWhere('id', $q);
         }
 
-        $ordenes = OrdenProduccion::with(['producto', 'operario'])
+        $ordenes = OrdenProduccion::with(['producto', 'operario.user'])
             ->orderBy('id', 'desc')
             ->get();
 
@@ -65,7 +65,7 @@ class OrdenController extends Controller
             }
         }
 
-        $operarios = Operario::select('id', 'turno', 'especialidad')->get();
+        $operarios = Operario::with('user:id,name')->select('id', 'user_id', 'turno', 'especialidad')->get();
 
         return Inertia::render('Produccion/Ordenes/Index', [
             'ordenes' => $ordenes,
@@ -91,7 +91,7 @@ class OrdenController extends Controller
         $data = $request->validate([
             'producto_id' => 'required|exists:productos,id',
             'cantidad_a_producir' => 'required|numeric|min:1',
-            // no recibimos operario ni fecha (se usan server-side)
+            'operario_id' => 'nullable|exists:operarios,id',
         ]);
 
         $producto = Producto::with(['recetas.ingrediente'])->findOrFail($data['producto_id']);
@@ -114,9 +114,9 @@ class OrdenController extends Controller
                 }
             }
 
-            // 2) Crear orden (fecha now), asociar operario si el usuario tiene uno
-            $operario_id = null;
-            if (auth()->check() && auth()->user()->operario) {
+            // 2) Crear orden (fecha now), asociar operario (manual o logueado si no se envía)
+            $operario_id = $data['operario_id'] ?? null;
+            if (!$operario_id && auth()->check() && auth()->user()->operario) {
                 $operario_id = auth()->user()->operario->id;
             }
 

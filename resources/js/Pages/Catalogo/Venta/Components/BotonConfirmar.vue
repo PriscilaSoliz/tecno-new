@@ -20,11 +20,7 @@ const montoPorCuota = computed(() => {
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-6">
         <div class="text-center mb-6">
             <p class="text-sm text-gray-600 mb-1 uppercase tracking-wide font-semibold">Total a Pagar</p>
-            <p class="text-4xl font-extrabold text-amber-600">${{ total.toFixed(2) }}</p>
             <p class="text-4xl font-extrabold text-amber-600">Bs {{ total.toFixed(2) }}</p>
-            <p v-if="modalidadPago === 'cuotas'" class="text-sm text-blue-600 font-medium mt-2 bg-blue-50 inline-block px-3 py-1 rounded-full">
-                {{ numeroCuotas }} cuotas de ${{ montoPorCuota }}
-            </p>
             <p v-if="modalidadPago === 'cuotas'" class="text-sm text-blue-600 font-medium mt-2 bg-blue-50 inline-block px-3 py-1 rounded-full">
                 {{ numeroCuotas }} cuotas de Bs {{ montoPorCuota }}
             </p>

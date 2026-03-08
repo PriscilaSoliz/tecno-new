@@ -15,7 +15,7 @@ class StripeController extends Controller
             'description' => 'required|string',
         ]);
 
-        Stripe::setApiKey(env('STRIPE_SECRET'));
+        Stripe::setApiKey(config('services.stripe.secret'));
 
         try {
             $paymentIntent = PaymentIntent::create([

@@ -39,7 +39,7 @@ const cards = ref([
       :style="{ background: `linear-gradient(135deg, var(--bg-medium) 0%, rgba(255,255,255,0.02) 100%)`, borderColor: 'var(--border)', color: 'var(--text-primary)' }"
     >
       <div class="p-6 flex flex-col items-center text-center">
-        <div class="icon-container mb-5 p-5 rounded-2xl" :style="{ backgroundColor: 'var(--primary)' }">
+        <div class="icon-container mb-5 p-5 rounded-2xl" :style="{ backgroundColor: 'var(--secondary)' }">
           <i :class="[card.icon, 'text-white text-4xl']"></i>
         </div>
         <h3 class="text-xl font-bold mb-2" :style="{ color: 'var(--text-primary)' }">{{ card.title }}</h3>

@@ -19,6 +19,8 @@ const form = useForm({
     remember: false,
 });
 
+const showPassword = ref(false);
+
 const submit = () => {
     form.transform(data => ({
         ...data,
@@ -116,16 +118,19 @@ onMounted(() => {
                                 <InputError class="mt-2" :message="form.errors.email" />
                             </div>
 
-                            <div class="mt-4">
+                             <div class="mt-4">
                                 <InputLabel for="password" value="Contraseña" />
-                                <TextInput
-                                    id="password"
-                                    v-model="form.password"
-                                    type="password"
-                                    class="mt-1 block w-full"
-                                    required
-                                    autocomplete="current-password"
-                                />
+                                <div class="relative">
+                                    <TextInput id="password" v-model="form.password"
+                                        :type="showPassword ? 'text' : 'password'" class="mt-1 block w-full pr-10"
+                                        required autocomplete="current-password" />
+                                    <button type="button"
+                                        class="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
+                                        @click="showPassword = !showPassword">
+                                        <i class="fa-solid" :class="showPassword ? 'fa-eye-slash' : 'fa-eye'"
+                                            style="color: #6B4226;"></i>
+                                    </button>
+                                </div>
                                 <InputError class="mt-2" :message="form.errors.password" />
                             </div>
 

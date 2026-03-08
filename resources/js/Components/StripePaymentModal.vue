@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 import { loadStripe } from '@stripe/stripe-js';
 import DialogModal from '@/Components/DialogModal.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
@@ -23,7 +24,18 @@ const clientSecret = ref(null);
 
 // Initialize Stripe
 const initStripe = async () => {
-    stripe.value = await loadStripe(props.publicKey || 'pk_test_sample'); // Replace with env usage
+    const page = usePage();
+    // Prioridad: Prop > Compartido por Inertia > Hardcoded (último recurso)
+    const key = props.publicKey || page.props.stripe_key || 'pk_test_51NKuNmKXQy79jQM3CdQKSYriL7l6LHRbImgVTIjADbk4cj2M4PWDaRn0SniYLILxYFatmYiqf2lPdmRdw8woqpPN008IHt2ITz';
+    
+    console.log('Stripe Key using:', key);
+    
+    if (!key || key === 'pk_test_sample') {
+        error.value = 'Configuración de pago incompleta: Clave de Stripe no encontrada.';
+        return;
+    }
+
+    stripe.value = await loadStripe(key);
 
     // Create PaymentIntent per transaction
     try {

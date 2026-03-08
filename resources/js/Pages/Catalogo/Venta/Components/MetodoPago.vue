@@ -66,16 +66,41 @@ const onPlanConfirm = (items) => {
 
         <!-- Selector de Cuotas -->
         <div v-if="modalidadPago === 'cuotas'"
-            class="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-100 animate-fade-in">
-            <label class="block text-sm font-medium text-blue-800 mb-2">Plazo de pago</label>
+            class="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800/50 animate-fade-in">
+            <label class="block text-sm font-medium text-blue-800 dark:text-blue-300 mb-2">Plazo de pago</label>
             <div class="flex gap-2">
-                <select :value="numeroCuotas" @change="emit('update:numeroCuotas', Number($event.target.value))"
-                    class="flex-1 border-blue-200 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white py-2">
-                    <option :value="3">3 cuotas</option>
-                    <option :value="4">4 cuotas</option>
-                    <option :value="5">5 cuotas</option>
-                    <option :value="6">6 cuotas</option>
-                </select>
+                <input type="number" 
+                    :value="numeroCuotas" 
+                    @keypress="(e) => { 
+                        if (!/[0-9]/.test(e.key)) {
+                            e.preventDefault();
+                            return;
+                        }
+                        const nextVal = Number(e.target.value + e.key);
+                        if (nextVal > 12) {
+                            e.preventDefault();
+                        }
+                    }"
+                    @input="(e) => {
+                        let v = e.target.value;
+                        if (v !== '') {
+                            let n = Number(v);
+                            if (n <= 12) {
+                                emit('update:numeroCuotas', n);
+                            } else {
+                                e.target.value = numeroCuotas;
+                            }
+                        }
+                    }"
+                    @blur="(e) => {
+                        if (!numeroCuotas || numeroCuotas < 2) {
+                            emit('update:numeroCuotas', 2);
+                            e.target.value = 2;
+                        }
+                    }"
+                    min="2" max="12"
+                    class="flex-1 border-blue-200 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white py-2 px-3 text-center"
+                    placeholder="2-12 cuotas" />
                 <button @click="showPlanModal = true"
                     class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
                     Ver Plan
@@ -91,7 +116,7 @@ const onPlanConfirm = (items) => {
                     + {{ planResumen.length - 1 }} cuotas pendientes (ver detalles en el modal)
                 </div>
             </div>
-            <p v-else class="text-xs text-blue-600 mt-2">
+            <p v-else class="text-xs text-blue-600 dark:text-blue-400 mt-2">
                 <i class="fas fa-exclamation-circle mr-1"></i> Configura y confirma el plan de pagos.
             </p>
         </div>
