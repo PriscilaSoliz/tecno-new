@@ -1,21 +1,25 @@
 import axios from 'axios';
 
-export async function fetchTopProducts() {
-  const { data } = await axios.get('/api/dashboard/top-products');
+export async function fetchTopProducts(baseUrl = '') {
+  const cleanBase = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
+  const { data } = await axios.get(`${cleanBase}api/dashboard/top-products`);
   return data;
 }
 
-export async function fetchSalesTimeline() {
-  const { data } = await axios.get('/api/dashboard/sales-timeline');
+export async function fetchSalesTimeline(baseUrl = '') {
+  const cleanBase = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
+  const { data } = await axios.get(`${cleanBase}api/dashboard/sales-timeline`);
   return data;
 }
 
-export async function fetchPaymentMethods() {
-  const { data } = await axios.get('/api/dashboard/payment-methods');
+export async function fetchPaymentMethods(baseUrl = '') {
+  const cleanBase = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
+  const { data } = await axios.get(`${cleanBase}api/dashboard/payment-methods`);
   return data;
 }
 
-export async function fetchDailyRevenue() {
-  const { data } = await axios.get('/api/dashboard/daily-revenue');
+export async function fetchDailyRevenue(baseUrl = '') {
+  const cleanBase = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
+  const { data } = await axios.get(`${cleanBase}api/dashboard/daily-revenue`);
   return data;
 }

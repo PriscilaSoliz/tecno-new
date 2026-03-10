@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 import { fetchTopProducts, fetchSalesTimeline, fetchPaymentMethods, fetchDailyRevenue } from '@/Services/DashboardService';
 import { 
   Chart as ChartJS, 
@@ -40,12 +41,13 @@ const loading = ref(true);
 
 const loadData = async () => {
     loading.value = true;
+    const baseUrl = usePage().props.app_url || '';
     try {
         const [products, timeline, methods, revenue] = await Promise.all([
-            fetchTopProducts(),
-            fetchSalesTimeline(),
-            fetchPaymentMethods(),
-            fetchDailyRevenue()
+            fetchTopProducts(baseUrl),
+            fetchSalesTimeline(baseUrl),
+            fetchPaymentMethods(baseUrl),
+            fetchDailyRevenue(baseUrl)
         ]);
         topProducts.value = products;
         salesTimeline.value = timeline;
