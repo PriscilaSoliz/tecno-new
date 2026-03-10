@@ -83,18 +83,21 @@ class ProductoController extends Controller
             try {
                 // Intento estándar de Laravel
                 $file->move($path, $filename);
+                $imagenPath = '/' . $folderName . '/' . $filename;
             } catch (\Exception $e) {
                 // Fallback manual si el anterior falla
                 try {
                     $fullPath = $path . DIRECTORY_SEPARATOR . $filename;
-                    if (@file_put_contents($fullPath, file_get_contents($file->getRealPath())) === false) {
-                        throw new \Exception("Permisos denegados en $folderName");
+                    if (@file_put_contents($fullPath, file_get_contents($file->getRealPath())) !== false) {
+                        $imagenPath = '/' . $folderName . '/' . $filename;
+                    } else {
+                        // Si falla manual, dejamos como null pero no bloqueamos la creación
+                        $imagenPath = null;
                     }
                 } catch (\Exception $inner) {
-                    return back()->withErrors(['imagen' => 'Error de permisos en el servidor: la carpeta public/' . $folderName . ' no permite escribir. Por favor, asigne permisos 777 manualmente a esa carpeta.']);
+                    $imagenPath = null;
                 }
             }
-            $imagenPath = '/' . $folderName . '/' . $filename;
         }
 
         $producto = Producto::create([
@@ -171,17 +174,18 @@ class ProductoController extends Controller
 
             try {
                 $file->move($path, $filename);
+                $data['imagen'] = '/' . $folderName . '/' . $filename;
             } catch (\Exception $e) {
                 try {
                     $fullPath = $path . DIRECTORY_SEPARATOR . $filename;
-                    if (@file_put_contents($fullPath, file_get_contents($file->getRealPath())) === false) {
-                        throw new \Exception("Permisos denegados en $folderName");
+                    if (@file_put_contents($fullPath, file_get_contents($file->getRealPath())) !== false) {
+                        $data['imagen'] = '/' . $folderName . '/' . $filename;
                     }
                 } catch (\Exception $inner) {
-                    return back()->withErrors(['imagen' => 'Error de permisos al subir la imagen. Por favor asigne permisos 777 a public/' . $folderName]);
+                    // Si falla, mantenemos la imagen anterior o null si no tenía
+                    // pero no bloqueamos la actualización
                 }
             }
-            $data['imagen'] = '/' . $folderName . '/' . $filename;
         }
 
         $producto->update($data);
