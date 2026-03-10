@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Producto;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\File;
 use Inertia\Inertia;
 
 class ProductoController extends Controller
@@ -52,8 +53,20 @@ class ProductoController extends Controller
             $file = $request->file('imagen');
             $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
 
+            $path = public_path('images/products');
+            
+            // Asegurar que el directorio exista
+            if (!File::exists($path)) {
+                File::makeDirectory($path, 0777, true, true);
+            }
+
+            // Asegurar permisos de escritura
+            if (!is_writable($path)) {
+                @chmod($path, 0777);
+            }
+
             // Guardar en public/images/products
-            $file->move(public_path('images/products'), $filename);
+            $file->move($path, $filename);
             $imagenPath = '/images/products/' . $filename;
         }
 
@@ -97,15 +110,27 @@ class ProductoController extends Controller
         // Manejar nueva imagen
         if ($request->hasFile('imagen')) {
             // Eliminar imagen anterior si existe
-            if ($producto->imagen && file_exists(public_path($producto->imagen))) {
+            if ($producto->imagen && File::exists(public_path($producto->imagen))) {
                 @unlink(public_path($producto->imagen));
             }
 
             $file = $request->file('imagen');
             $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
 
+            $path = public_path('images/products');
+            
+            // Asegurar que el directorio exista
+            if (!File::exists($path)) {
+                File::makeDirectory($path, 0777, true, true);
+            }
+
+            // Asegurar permisos de escritura
+            if (!is_writable($path)) {
+                @chmod($path, 0777);
+            }
+
             // Guardar en public/images/products
-            $file->move(public_path('images/products'), $filename);
+            $file->move($path, $filename);
             $data['imagen'] = '/images/products/' . $filename;
         }
 
@@ -120,7 +145,7 @@ class ProductoController extends Controller
         $producto = Producto::findOrFail($id);
 
         // Eliminar imagen si existe
-        if ($producto->imagen && file_exists(public_path($producto->imagen))) {
+        if ($producto->imagen && File::exists(public_path($producto->imagen))) {
             @unlink(public_path($producto->imagen));
         }
 
