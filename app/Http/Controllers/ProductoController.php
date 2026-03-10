@@ -54,30 +54,47 @@ class ProductoController extends Controller
             $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
 
             $path = public_path('images/products');
+            $folderName = 'images/products';
             
-            // Asegurar que el directorio de productos y su padre existan con permisos amplios
+            // 1. Asegurar estructura base
             if (!File::exists(public_path('images'))) {
-                File::makeDirectory(public_path('images'), 0777, true, true);
+                @File::makeDirectory(public_path('images'), 0777, true, true);
             }
             if (!File::exists($path)) {
-                File::makeDirectory($path, 0777, true, true);
+                @File::makeDirectory($path, 0777, true, true);
             }
 
-            // Forzar permisos de escritura
-            @chmod(public_path('images'), 0777);
-            @chmod($path, 0777);
-
-            try {
-                // Intento estándar
-                $file->move($path, $filename);
-            } catch (\Exception $e) {
-                // Fallback manual: útil en servidores donde move_uploaded_file está restringido
-                $fullPath = $path . DIRECTORY_SEPARATOR . $filename;
-                if (file_put_contents($fullPath, file_get_contents($file->getRealPath())) === false) {
-                    return back()->withErrors(['imagen' => 'No se pudo escribir en el servidor. Por favor asigne permisos 777 a public/images/products/']);
+            // 2. Si la carpeta existe pero NO es escribible, intentamos usar una alternativa
+            if (File::exists($path) && !is_writable($path)) {
+                @chmod($path, 0777); // Re-intento de permisos
+                
+                if (!is_writable($path)) {
+                    // Si sigue sin ser escribible, intentamos crear una carpeta con nombre distinto
+                    // Algunos servidores bloquean carpetas creadas por otros usuarios
+                    $path = public_path('images/p_items');
+                    $folderName = 'images/p_items';
+                    if (!File::exists($path)) {
+                        @File::makeDirectory($path, 0777, true, true);
+                    }
+                    @chmod($path, 0777);
                 }
             }
-            $imagenPath = '/images/products/' . $filename;
+
+            try {
+                // Intento estándar de Laravel
+                $file->move($path, $filename);
+            } catch (\Exception $e) {
+                // Fallback manual si el anterior falla
+                try {
+                    $fullPath = $path . DIRECTORY_SEPARATOR . $filename;
+                    if (@file_put_contents($fullPath, file_get_contents($file->getRealPath())) === false) {
+                        throw new \Exception("Permisos denegados en $folderName");
+                    }
+                } catch (\Exception $inner) {
+                    return back()->withErrors(['imagen' => 'Error de permisos en el servidor: la carpeta public/' . $folderName . ' no permite escribir. Por favor, asigne permisos 777 manualmente a esa carpeta.']);
+                }
+            }
+            $imagenPath = '/' . $folderName . '/' . $filename;
         }
 
         $producto = Producto::create([
@@ -128,24 +145,43 @@ class ProductoController extends Controller
             $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
 
             $path = public_path('images/products');
+            $folderName = 'images/products';
             
             // Asegurar directorios y permisos
-            if (!File::exists($path)) {
-                File::makeDirectory($path, 0777, true, true);
+            if (!File::exists(public_path('images'))) {
+                @File::makeDirectory(public_path('images'), 0777, true, true);
             }
-            @chmod(public_path('images'), 0777);
-            @chmod($path, 0777);
+            if (!File::exists($path)) {
+                @File::makeDirectory($path, 0777, true, true);
+            }
+
+            // Si la carpeta existe pero NO es escribible, intentamos usar una alternativa
+            if (File::exists($path) && !is_writable($path)) {
+                @chmod($path, 0777); 
+                
+                if (!is_writable($path)) {
+                    $path = public_path('images/p_items');
+                    $folderName = 'images/p_items';
+                    if (!File::exists($path)) {
+                        @File::makeDirectory($path, 0777, true, true);
+                    }
+                    @chmod($path, 0777);
+                }
+            }
 
             try {
                 $file->move($path, $filename);
             } catch (\Exception $e) {
-                // Fallback manual
-                $fullPath = $path . DIRECTORY_SEPARATOR . $filename;
-                if (file_put_contents($fullPath, file_get_contents($file->getRealPath())) === false) {
-                    return back()->withErrors(['imagen' => 'Error de permisos al subir la imagen.']);
+                try {
+                    $fullPath = $path . DIRECTORY_SEPARATOR . $filename;
+                    if (@file_put_contents($fullPath, file_get_contents($file->getRealPath())) === false) {
+                        throw new \Exception("Permisos denegados en $folderName");
+                    }
+                } catch (\Exception $inner) {
+                    return back()->withErrors(['imagen' => 'Error de permisos al subir la imagen. Por favor asigne permisos 777 a public/' . $folderName]);
                 }
             }
-            $data['imagen'] = '/images/products/' . $filename;
+            $data['imagen'] = '/' . $folderName . '/' . $filename;
         }
 
         $producto->update($data);
