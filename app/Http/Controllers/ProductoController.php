@@ -55,18 +55,28 @@ class ProductoController extends Controller
 
             $path = public_path('images/products');
             
-            // Asegurar que el directorio exista
+            // Asegurar que el directorio de productos y su padre existan con permisos amplios
+            if (!File::exists(public_path('images'))) {
+                File::makeDirectory(public_path('images'), 0777, true, true);
+            }
             if (!File::exists($path)) {
                 File::makeDirectory($path, 0777, true, true);
             }
 
-            // Asegurar permisos de escritura
-            if (!is_writable($path)) {
-                @chmod($path, 0777);
-            }
+            // Forzar permisos de escritura
+            @chmod(public_path('images'), 0777);
+            @chmod($path, 0777);
 
-            // Guardar en public/images/products
-            $file->move($path, $filename);
+            try {
+                // Intento estándar
+                $file->move($path, $filename);
+            } catch (\Exception $e) {
+                // Fallback manual: útil en servidores donde move_uploaded_file está restringido
+                $fullPath = $path . DIRECTORY_SEPARATOR . $filename;
+                if (file_put_contents($fullPath, file_get_contents($file->getRealPath())) === false) {
+                    return back()->withErrors(['imagen' => 'No se pudo escribir en el servidor. Por favor asigne permisos 777 a public/images/products/']);
+                }
+            }
             $imagenPath = '/images/products/' . $filename;
         }
 
@@ -119,18 +129,22 @@ class ProductoController extends Controller
 
             $path = public_path('images/products');
             
-            // Asegurar que el directorio exista
+            // Asegurar directorios y permisos
             if (!File::exists($path)) {
                 File::makeDirectory($path, 0777, true, true);
             }
+            @chmod(public_path('images'), 0777);
+            @chmod($path, 0777);
 
-            // Asegurar permisos de escritura
-            if (!is_writable($path)) {
-                @chmod($path, 0777);
+            try {
+                $file->move($path, $filename);
+            } catch (\Exception $e) {
+                // Fallback manual
+                $fullPath = $path . DIRECTORY_SEPARATOR . $filename;
+                if (file_put_contents($fullPath, file_get_contents($file->getRealPath())) === false) {
+                    return back()->withErrors(['imagen' => 'Error de permisos al subir la imagen.']);
+                }
             }
-
-            // Guardar en public/images/products
-            $file->move($path, $filename);
             $data['imagen'] = '/images/products/' . $filename;
         }
 
