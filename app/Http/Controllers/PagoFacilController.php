@@ -159,7 +159,7 @@ class PagoFacilController extends Controller
                 'venta_id' => $venta->id,
                 'monto' => $montoPago, // Usar monto de cuota si aplica
                 'fecha' => now(),
-                'metodo_pago' => 'PAGO_FACIL',
+                'metodo_pago' => 'qr',
                 'estado' => 'pendiente',
                 'referencia_externa' => $nroPago,
                 'transaction_id' => $transactionId,
@@ -320,11 +320,34 @@ class PagoFacilController extends Controller
                         'payment_status' => $paymentStatus
                     ]);
 
+                    // IMPORTANTE: recuperar cuota_id ANTES de actualizar datos_pago
+                    // ya que el update sobreescribiría esos datos con los de PagoFácil
+                    $datosGuardados = $pagoLocal->datos_pago ?? [];
+                    $cuotaIdGuardada = $datosGuardados['cuota_id'] ?? null;
+
+                    // Hacer merge: conservar datos propios (cuota_id, etc.) más datos de PagoFácil
+                    $nuevosDatos = array_merge((array) $datosGuardados, (array) $values);
+
                     $pagoLocal->update([
                         'estado' => 'completado',
                         'fecha_pago' => now(),
-                        'datos_pago' => $values
+                        'datos_pago' => $nuevosDatos
                     ]);
+
+                    // Si el pago corresponde a una cuota, marcarla como pagada
+                    if ($cuotaIdGuardada) {
+                        $cuota = VentaCuota::find($cuotaIdGuardada);
+                        if ($cuota && $cuota->estado !== 'pagado') {
+                            $cuota->update([
+                                'estado' => 'pagado',
+                                'fecha_pago' => now()
+                            ]);
+                            Log::info('Cuota marcada como pagada desde polling', [
+                                'cuota_id' => $cuotaIdGuardada,
+                                'pago_id' => $pagoLocal->id
+                            ]);
+                        }
+                    }
 
                     // NO actualizamos el pedido a 'completed' para respetar el flujo de cocina
                 }

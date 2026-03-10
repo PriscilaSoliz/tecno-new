@@ -11,7 +11,9 @@ import MenuItems from '@/Pages/MenuItems.vue';
 import DarkModeToggle from '@/Components/DarkModeToggle.vue';
 import PageFooter from '@/Components/PageFooter.vue';
 import GlobalSearch from '@/Components/GlobalSearch.vue';
+import NotificationToast from '@/Components/NotificationToast.vue';
 import { useAccessibility } from '@/Composables/useAccessibility';
+import { useNotifications } from '@/Composables/useNotifications';
 
 defineProps({
     title: String,
@@ -49,6 +51,15 @@ const logout = () => {
 
 // Inicializar accesibilidad
 const accessibility = useAccessibility();
+
+// Configurar notificaciones globales
+const { notify, success, error, warning, info } = useNotifications();
+if (typeof window !== 'undefined') {
+    window.$notify = { notify, success, error, warning, info };
+    
+    // Opcional: reemplazar alert nativo (puedes activarlo si el usuario lo prefiere)
+    // window.alert = (msg) => info(msg, 'Aviso del Sistema');
+}
 
 // --- new: runtime loader for Font Awesome (avoids <script>/<style> in template) ---
 function injectCss(id, href) {
@@ -100,6 +111,7 @@ onMounted(() => {
         </Head>
 
         <Banner />
+        <NotificationToast />
 
         <div class="min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-300 flex flex-col">
             <nav

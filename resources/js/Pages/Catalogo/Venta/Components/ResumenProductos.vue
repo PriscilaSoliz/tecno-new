@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 
 const props = defineProps({
     productos: { type: Array, default: () => [] },
@@ -12,10 +13,13 @@ const handleImageError = (e) => {
 
 // helper for product images
 const getImageUrl = (img) => {
+    const baseUrl = usePage().props.app_url || '';
     if (!img) return 'https://placehold.co/100x100/EEE/31343C?text=Producto';
     if (typeof img !== 'string') return 'https://placehold.co/100x100/EEE/31343C?text=Producto';
-    if (img.startsWith('http') || img.startsWith('/')) return img;
-    return `/${img}`;
+    if (img.startsWith('http')) return img;
+    const cleanImg = img.startsWith('/') ? img.substring(1) : img;
+    const cleanBase = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
+    return `${cleanBase}${cleanImg}`;
 };
 
 const subtotal = computed(() => props.total || 0);

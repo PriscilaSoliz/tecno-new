@@ -206,7 +206,11 @@ const descargarQR = () => {
 const copiarNroPago = () => {
     if (nroPago.value) {
         navigator.clipboard.writeText(nroPago.value);
-        alert('Número de pago copiado al portapapeles');
+        if (window.$notify) {
+            window.$notify.success('Referencia copiada al portapapeles');
+        } else {
+            alert('Número de pago copiado al portapapeles');
+        }
     }
 };
 

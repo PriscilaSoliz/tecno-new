@@ -88,6 +88,7 @@
 
 <script setup>
 import { ref, computed } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 import PromocionModal from '../PromocionModal.vue';
 
 const props = defineProps({
@@ -108,10 +109,13 @@ const handleImageError = (e) => {
 };
 
 const getImageUrl = (img) => {
+	const baseUrl = usePage().props.app_url || '';
 	if (!img) return 'https://placehold.co/100x100/EEE/31343C?text=Producto';
 	if (typeof img !== 'string') return 'https://placehold.co/100x100/EEE/31343C?text=Producto';
-	if (img.startsWith('http') || img.startsWith('/')) return img;
-	return `/${img}`;
+	if (img.startsWith('http')) return img;
+	const cleanImg = img.startsWith('/') ? img.substring(1) : img;
+	const cleanBase = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
+	return `${cleanBase}${cleanImg}`;
 };
 
 const emitSearch = () => { }

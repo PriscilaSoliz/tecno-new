@@ -20,8 +20,16 @@ const form = useForm({
     notas: '',
 });
 
-const finalizarCompra = () => {
-    if (!confirm('¿Confirmar compra?')) return;
+const finalizarCompra = async () => {
+    if (window.$notify) {
+        const ok = await window.$notify.confirm(
+            'Confirmar Pedido',
+            `¿Deseas confirmar tu compra por Bs ${total.value.toFixed(2)}?`
+        );
+        if (!ok) return;
+    } else {
+        if (!confirm('¿Confirmar compra?')) return;
+    }
     form.post(route('catalogo.confirmar'));
 };
 
@@ -36,10 +44,13 @@ const handleImageError = (e) => {
 
 // helper for product images
 const getImageUrl = (img) => {
+    const baseUrl = usePage().props.app_url || '';
     if (!img) return 'https://placehold.co/100x100/EEE/31343C?text=Producto';
     if (typeof img !== 'string') return 'https://placehold.co/100x100/EEE/31343C?text=Producto';
-    if (img.startsWith('http') || img.startsWith('/')) return img;
-    return `/${img}`;
+    if (img.startsWith('http')) return img;
+    const cleanImg = img.startsWith('/') ? img.substring(1) : img;
+    const cleanBase = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
+    return `${cleanBase}${cleanImg}`;
 };
 
 const goBack = () => {

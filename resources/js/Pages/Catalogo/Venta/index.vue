@@ -6,9 +6,13 @@ import ResumenProductos from './Components/ResumenProductos.vue';
 import InfoCliente from './Components/InfoCliente.vue';
 import MetodoPago from './Components/MetodoPago.vue';
 import BotonConfirmar from './Components/BotonConfirmar.vue';
+import DeliveryMapPicker from './Components/DeliveryMapPicker.vue';
 import DebugPanel from './Components/DebugPanel.vue';
 import QRModal from '@/Pages/PagoFacil/QRModal.vue';
 import StripePaymentModal from '@/Components/StripePaymentModal.vue';
+import { useNotifications } from '@/Composables/useNotifications';
+
+const { confirm: confirmModal, success: notifySuccess, error: notifyError, warning: notifyWarning } = useNotifications();
 
 const props = defineProps({
     productos: { type: Array, default: () => [] },
@@ -35,6 +39,13 @@ const ventaIdParaQR = ref(null);
 // Estado Stripe
 const showStripeModal = ref(false);
 const amountForStripe = ref(0);
+
+// Ubicación de entrega
+const deliveryLocation = ref({ lat: null, lng: null });
+
+const handleLocationUpdate = (loc) => {
+    deliveryLocation.value = loc;
+};
 
 // Calcular si hay datos válidos
 const hayDatos = computed(() => localProductos.value.length > 0);
@@ -74,7 +85,7 @@ const handlePlanConfirmed = (items) => {
 
 const finalizarCompra = () => {
     if (modalidadPago.value === 'cuotas' && cuotasSchedule.value.length === 0) {
-        alert('Por favor configura y confirma el plan de pagos antes de continuar.');
+        notifyWarning('Por favor configura y confirma el plan de pagos antes de continuar.');
         return;
     }
 
@@ -89,23 +100,25 @@ const finalizarCompra = () => {
 
     // VALIDACIÓN: Pagos con tarjeta deben ser mayores a 5 Bs
     if (tipoPago.value === 'tarjeta' && montoTotalTransaccion <= 5) {
-        alert('⚠️ Restricción de Pago con Tarjeta\n\nLos pagos con tarjeta deben ser mayores a 5 Bs.\n\nMonto actual: Bs ' + montoTotalTransaccion.toFixed(2) + '\n\nPor favor, selecciona otro método de pago (Efectivo o QR).');
+        notifyError('Los pagos con tarjeta deben ser mayores a 5 Bs. Monto actual: Bs ' + montoTotalTransaccion.toFixed(2), 'Restricción de Pago');
         return;
     }
 
-    if (!confirm('¿Confirmar compra?')) return;
+    confirmModal('¿Deseas confirmar tu compra por ' + localTotal.value.toFixed(2) + ' Bs?', 'Confirmar Pedido').then((confirmed) => {
+        if (!confirmed) return;
 
-    processing.value = true;
+        processing.value = true;
 
-    // INTERCEPTAR PAGO CON TARJETA
-    if (tipoPago.value === 'tarjeta') {
-        amountForStripe.value = montoTotalTransaccion;
-        showStripeModal.value = true;
-        processing.value = false; // Detener spinner global
-        return;
-    }
+        // INTERCEPTAR PAGO CON TARJETA
+        if (tipoPago.value === 'tarjeta') {
+            amountForStripe.value = montoTotalTransaccion;
+            showStripeModal.value = true;
+            processing.value = false; // Detener spinner global
+            return;
+        }
 
-    submitOrder(montoTotalTransaccion);
+        submitOrder(montoTotalTransaccion);
+    });
 };
 
 const submitOrder = (montoInicial, stripePaymentIntent = null) => {
@@ -118,14 +131,16 @@ const submitOrder = (montoInicial, stripePaymentIntent = null) => {
         cuotas_schedule: modalidadPago.value === 'cuotas' ? cuotasSchedule.value : null,
         pago_inicial: montoInicial,
         total: localTotal.value,
-        stripe_payment_id: stripePaymentIntent?.id
+        stripe_payment_id: stripePaymentIntent?.id,
+        lat: deliveryLocation.value.lat,
+        lng: deliveryLocation.value.lng
     }, {
         onFinish: () => {
             processing.value = false;
         },
         onError: (errors) => {
             processing.value = false;
-            alert('Error al procesar el pedido. Por favor intente nuevamente.');
+            notifyError('No se pudo procesar el pedido. Revisa los datos e intenta de nuevo.');
             console.error('Errores:', errors);
         }
     });
@@ -143,7 +158,7 @@ const handleQRSuccess = (data) => {
     if (typeof localStorage !== 'undefined') {
         localStorage.removeItem('carrito_backup');
     }
-    alert('¡Pago completado! Tu pedido ha sido procesado correctamente.');
+    notifySuccess('Tu pedido ha sido procesado correctamente.');
     router.visit(route('cliente.pedidos.index'));
 };
 
@@ -199,6 +214,7 @@ const volverAlCatalogo = () => {
                     <div class="lg:col-span-2 space-y-6">
                         <ResumenProductos :productos="localProductos" :total="localTotal" />
                         <InfoCliente :cliente="localCliente" />
+                        <DeliveryMapPicker :direccion="localCliente.direccion" @update:location="handleLocationUpdate" />
                     </div>
 
                     <!-- Columna Derecha -->

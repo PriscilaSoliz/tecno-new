@@ -92,4 +92,27 @@ class VentaController extends Controller
 
         return response()->json($salesTimeline);
     }
+
+    public function paymentMethods()
+    {
+        $methods = DB::table('ventas')
+            ->select('tipo_pago', DB::raw('COUNT(*) as count'), DB::raw('SUM(total) as total_amount'))
+            ->groupBy('tipo_pago')
+            ->get();
+
+        return response()->json($methods);
+    }
+
+    public function dailyRevenue()
+    {
+        $thirtyDaysAgo = Carbon::now()->subDays(30);
+        $revenue = DB::table('ventas')
+            ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(total) as total'))
+            ->where('created_at', '>=', $thirtyDaysAgo)
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
+
+        return response()->json($revenue);
+    }
 }

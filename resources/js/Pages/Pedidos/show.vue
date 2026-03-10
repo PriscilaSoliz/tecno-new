@@ -13,9 +13,9 @@ let map, storeMarker, customerMarker, routeLayer;
 
 async function ensureLeaflet() {
   if (typeof window === 'undefined') return;
-  if (window.L) { L = window.L; return; }
+  if (window.L) return window.L;
 
-  // inject CSS once
+  // Cargar CSS
   if (!document.getElementById('leaflet-css')) {
     const link = document.createElement('link');
     link.id = 'leaflet-css';
@@ -24,7 +24,7 @@ async function ensureLeaflet() {
     document.head.appendChild(link);
   }
 
-  // inject script and await load
+  // Cargar Script
   if (!document.getElementById('leaflet-script')) {
     await new Promise((resolve, reject) => {
       const s = document.createElement('script');
@@ -35,46 +35,86 @@ async function ensureLeaflet() {
       s.onerror = (e) => reject(e);
       document.body.appendChild(s);
     });
-  } else {
-    // if script already present, wait until global is available
-    await new Promise((resolve) => {
-      const timer = setInterval(() => {
-        if (window.L) {
-          clearInterval(timer);
-          resolve(true);
-        }
-      }, 50);
-    });
   }
 
-  L = window.L;
+  // Esperar a disponibilidad global
+  return new Promise((resolve) => {
+    const timer = setInterval(() => {
+      if (window.L) {
+        clearInterval(timer);
+        resolve(window.L);
+      }
+    }, 50);
+  });
 }
 
 async function initMap() {
-  await ensureLeaflet();
+  try {
+    const L = await ensureLeaflet();
+    if (!L) return;
 
-  const origin = props.deliveryRoute.origin;
-  const dest = props.deliveryRoute.destination;
-  const centerLat = (origin.lat + dest.lat) / 2;
-  const centerLng = (origin.lng + dest.lng) / 2;
+    // Configurar iconos (Fix para mapa gris)
+    delete L.Icon.Default.prototype._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    });
 
-  map = L.map('delivery-map').setView([centerLat, centerLng], 13);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
-  }).addTo(map);
+    const originLat = Number(props.deliveryRoute?.origin?.lat) || -17.7833;
+    const originLng = Number(props.deliveryRoute?.origin?.lng) || -63.1821;
+    const destLat = Number(props.deliveryRoute?.destination?.lat) || originLat;
+    const destLng = Number(props.deliveryRoute?.destination?.lng) || originLng;
 
-  storeMarker = L.marker([origin.lat, origin.lng], { title: 'Tienda' }).addTo(map);
-  customerMarker = L.marker([dest.lat, dest.lng], { title: 'Cliente' }).addTo(map);
+    const origin = { lat: originLat, lng: originLng };
+    const dest = { lat: destLat, lng: destLng };
 
-  const latlngs = [[origin.lat, origin.lng], [dest.lat, dest.lng]];
-  routeLayer = L.polyline(latlngs, { color: 'blue' }).addTo(map);
-  map.fitBounds(routeLayer.getBounds(), { padding: [20, 20] });
+    // Limpiar si ya existe
+    if (map) map.remove();
+
+    map = L.map('delivery-map').setView([dest.lat, dest.lng], 16);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    customerMarker = L.marker([dest.lat, dest.lng], { title: 'Cliente' }).addTo(map)
+      .bindPopup('Punto de Entrega seleccionado por el cliente')
+      .openPopup();
+
+    // Invalidate size para corregir visualización
+    setTimeout(() => {
+      if (map) map.invalidateSize();
+    }, 500);
+
+  } catch (e) {
+    console.error('Error en mapa:', e);
+  }
 }
 
 // Acciones de estado
+const copiarUbicacion = () => {
+    const { lat, lng } = props.deliveryRoute.destination;
+    const url = `https://www.google.com/maps?q=${lat},${lng}`;
+    
+    // Abrir en nueva pestaña
+    window.open(url, '_blank');
+    
+    // También copiar al portapapeles
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(() => {
+            if (window.$notify) window.$notify.success('Ubicación copiada al portapapeles');
+        });
+    }
+};
+
 const updateEstado = (nuevoEstado) => {
-  router.put(route('pedidos.update', props.pedido.id), { estado_produccion: nuevoEstado });
+  router.put(route('pedidos.update', props.pedido.id), { estado_produccion: nuevoEstado }, {
+    onSuccess: () => {
+      if (window.$notify) window.$notify.success('Estado del pedido actualizado correctamente');
+    }
+  });
 };
 
 const estadoActual = computed(() => props.pedido.estado_produccion);
@@ -92,6 +132,25 @@ const formatDate = (isoString) => {
 
 const isAtrasado = (fecha) => {
   return new Date(fecha) < new Date() && !fecha.match(/pagado/i);
+};
+
+const registrarPagoCuota = async (cuota) => {
+    if (window.$notify) {
+        const ok = await window.$notify.confirm(
+            'Registrar Pago',
+            `¿Confirmar que deseas registrar el pago de Bs ${Number(cuota.monto).toFixed(2)} para la cuota #${cuota.numero_cuota}?`
+        );
+        if (!ok) return;
+    }
+
+    router.put(route('pedidos.cuota.pagar', cuota.id), {}, {
+        onSuccess: () => {
+            if (window.$notify) window.$notify.success('Pago registrado correctamente');
+        },
+        onError: () => {
+            if (window.$notify) window.$notify.error('Error al registrar el pago');
+        }
+    });
 };
 
 onMounted(async () => await initMap());
@@ -160,6 +219,7 @@ onMounted(async () => await initMap());
                       <th scope="col" class="px-2 py-2 text-left text-xs font-semibold text-gray-900">Vence</th>
                       <th scope="col" class="px-2 py-2 text-right text-xs font-semibold text-gray-900">Monto</th>
                       <th scope="col" class="px-2 py-2 text-center text-xs font-semibold text-gray-900">Estado</th>
+                      <th scope="col" class="px-2 py-2 text-center text-xs font-semibold text-gray-900">Acción</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-gray-200 bg-white">
@@ -182,6 +242,12 @@ onMounted(async () => await initMap());
                           class="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">Atrasado</span>
                         <span v-else
                           class="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">Pendiente</span>
+                      </td>
+                      <td class="whitespace-nowrap px-2 py-2 text-xs text-center">
+                        <button v-if="cuota.estado !== 'pagado'" @click="registrarPagoCuota(cuota)"
+                          class="text-emerald-600 hover:text-emerald-800 font-bold flex items-center justify-center gap-1 mx-auto">
+                          <i class="fas fa-money-bill-wave"></i> Pagar
+                        </button>
                       </td>
                     </tr>
                   </tbody>
@@ -218,6 +284,20 @@ onMounted(async () => await initMap());
                 class="text-center p-3 bg-green-50 text-green-800 rounded-lg border border-green-200 font-bold">
                 <i class="fas fa-flag-checkered mr-2"></i> Pedido Completado
               </div>
+
+              <!-- Botón Copiar Ubicación -->
+              <button
+                class="mt-4 w-full px-4 py-3 bg-white border-2 border-indigo-600 text-indigo-600 rounded-lg font-bold hover:bg-indigo-50 transition flex items-center justify-center gap-2"
+                @click="copiarUbicacion">
+                <i class="fas fa-copy"></i> Copiar Ubicación
+              </button>
+
+              <!-- Botón Google Maps Directo -->
+              <a :href="`https://www.google.com/maps?q=${deliveryRoute.destination.lat},${deliveryRoute.destination.lng}`"
+                 target="_blank"
+                 class="mt-3 w-full px-4 py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition flex items-center justify-center gap-2">
+                 <i class="fas fa-map-marked-alt"></i> Ver en Google Maps
+              </a>
             </div>
           </div>
         </div>

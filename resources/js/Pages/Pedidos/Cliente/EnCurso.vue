@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ActividadPedido from './Components/ActividadPedido.vue';
 import DialogModal from '@/Components/DialogModal.vue';
@@ -13,10 +13,19 @@ const props = defineProps({
   detalles: Array
 });
 
+const page = usePage();
+const isAdmin = computed(() => {
+    const roles = page.props.auth?.user?.roles || [];
+    return roles.includes('propietario') || roles.includes('administrador');
+});
+
 const marcarRecibido = () => router.put(route('cliente.pedidos.recibido', props.pedido.id));
 
 // Lógica de Cuotas
-const cuotas = computed(() => props.pedido?.venta?.cuotas || []);
+const cuotas = computed(() => {
+  const items = props.pedido?.venta?.cuotas || [];
+  return [...items].sort((a, b) => a.numero_cuota - b.numero_cuota);
+});
 const hayCuotas = computed(() => cuotas.value.length > 0);
 
 const isAtrasado = (fecha) => {
@@ -47,6 +56,23 @@ const abrirPago = (cuota) => {
 };
 
 const pagarMock = (metodo) => {
+  if (metodo === 'Efectivo') {
+    showPaymentModal.value = false;
+    isRefreshing.value = true;
+    router.put(route('pedidos.cuota.pagar', cuotaSeleccionada.value.id), {}, {
+      onSuccess: () => {
+        if (window.$notify) window.$notify.success('¡Pago en efectivo registrado correctamente!');
+      },
+      onError: () => {
+        if (window.$notify) window.$notify.error('Error al registrar el pago en efectivo.');
+      },
+      onFinish: () => {
+        isRefreshing.value = false;
+      }
+    });
+    return;
+  }
+
   if (metodo === 'Tarjeta') {
     showPaymentModal.value = false;
     showStripeModal.value = true;
@@ -65,10 +91,31 @@ const pagarMock = (metodo) => {
   }
 };
 
+const isRefreshing = ref(false);
+
 const handleQRSuccess = (data) => {
   showQRModal.value = false;
-  // Recargar la página para mostrar la cuota actualizada
-  router.reload({ only: ['pedido'] });
+  isRefreshing.value = true;
+  
+  if (window.$notify) {
+    window.$notify.success('¡Pago verificado correctamente! Estamos actualizando tu pedido.');
+  }
+
+  // Realizar un refresco completo de los datos sin restricciones
+  router.reload({ 
+    preserveScroll: true,
+    onSuccess: () => {
+      isRefreshing.value = false;
+      // Notificación más discreta o confirmación de éxito
+      console.log('Datos de pedido actualizados tras pago QR');
+    },
+    onFinish: () => {
+      isRefreshing.value = false;
+    }
+  });
+
+  // Mostrar mensaje de éxito (podemos mantener el alert pero después de iniciar el reload o usar algo más suave)
+  // Para que el usuario vea el cambio al instante, el reload es clave.
 };
 
 const handleQRClose = () => {
@@ -81,8 +128,14 @@ const handleStripeSuccess = (paymentIntent) => {
   router.put(route('pedidos.cuota.pagar', cuotaSeleccionada.value.id), {
     payment_id: paymentIntent.id
   }, {
-    onSuccess: () => alert('¡Cuota pagada exitosamente!'),
-    onError: () => alert('Error al registrar el pago en el sistema.')
+    onSuccess: () => {
+      if (window.$notify) window.$notify.success('¡Cuota pagada exitosamente!');
+      else alert('¡Cuota pagada exitosamente!');
+    },
+    onError: () => {
+      if (window.$notify) window.$notify.error('Error al registrar el pago en el sistema.');
+      else alert('Error al registrar el pago en el sistema.');
+    }
   });
 };
 </script>
@@ -109,9 +162,14 @@ const handleStripeSuccess = (paymentIntent) => {
           </div>
 
           <!-- Plan de Pagos -->
-          <div v-if="hayCuotas" class="mt-8 border-t pt-6">
-            <h3 class="font-bold text-lg text-blue-800 mb-4">Plan de Pagos (Cuotas)</h3>
-            <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-lg">
+          <div v-if="hayCuotas" class="mt-8 border-t pt-6" :class="{ 'opacity-50 pointer-events-none': isRefreshing }">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-bold text-lg text-blue-800">Plan de Pagos (Cuotas)</h3>
+              <div v-if="isRefreshing" class="flex items-center gap-2 text-blue-600 text-sm italic">
+                <i class="fas fa-spinner fa-spin"></i> Actualizando...
+              </div>
+            </div>
+            <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-lg relative">
               <table class="min-w-full divide-y divide-gray-300">
                 <thead class="bg-gray-50">
                   <tr>
@@ -159,7 +217,8 @@ const handleStripeSuccess = (paymentIntent) => {
 
         <div class="bg-white rounded-xl shadow p-4">
           <ActividadPedido :estado="pedido.estado_produccion" />
-          <button class="mt-4 w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
+          <button v-if="pedido.estado_produccion !== 'completed'"
+            class="mt-4 w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
             @click="marcarRecibido">
             Marcar como recibido
           </button>
@@ -176,7 +235,7 @@ const handleStripeSuccess = (paymentIntent) => {
         <div class="text-center">
           <p class="mb-4 text-lg">Monto a pagar: <strong>Bs {{ cuotaSeleccionada?.monto }}</strong></p>
 
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid gap-4" :class="isAdmin ? 'grid-cols-3' : 'grid-cols-2'">
             <button @click="pagarMock('QR')"
               class="p-4 border rounded-lg hover:bg-purple-50 hover:border-purple-500 transition flex flex-col items-center">
               <i class="fas fa-qrcode text-3xl text-purple-600 mb-2"></i>
@@ -186,6 +245,11 @@ const handleStripeSuccess = (paymentIntent) => {
               class="p-4 border rounded-lg hover:bg-blue-50 hover:border-blue-500 transition flex flex-col items-center">
               <i class="fas fa-credit-card text-3xl text-blue-600 mb-2"></i>
               <span class="font-bold text-gray-700">Tarjeta</span>
+            </button>
+            <button v-if="isAdmin" @click="pagarMock('Efectivo')"
+              class="p-4 border rounded-lg hover:bg-emerald-50 hover:border-emerald-500 transition flex flex-col items-center">
+              <i class="fas fa-money-bill-wave text-3xl text-emerald-600 mb-2"></i>
+              <span class="font-bold text-gray-700">Efectivo</span>
             </button>
           </div>
         </div>

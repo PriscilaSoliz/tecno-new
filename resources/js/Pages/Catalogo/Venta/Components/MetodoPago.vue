@@ -110,7 +110,7 @@ const onPlanConfirm = (items) => {
             <div v-if="planResumen" class="mt-3 p-3 bg-white rounded border border-blue-100 text-sm">
                 <div class="flex justify-between items-center font-bold text-blue-900 border-b pb-2 mb-2">
                     <span>Pago Inicial (Hoy):</span>
-                    <span>${{ planResumen[0]?.monto.toFixed(2) }}</span>
+                    <span>Bs {{ planResumen[0]?.monto.toFixed(2) }}</span>
                 </div>
                 <div class="text-xs text-blue-600">
                     + {{ planResumen.length - 1 }} cuotas pendientes (ver detalles en el modal)

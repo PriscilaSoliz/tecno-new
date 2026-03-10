@@ -8,6 +8,8 @@ use App\Models\PedidoDetalle;
 use App\Models\Venta;
 use App\Models\DetalleVenta;
 use App\Models\Cliente;
+use App\Models\Pagos;
+use App\Models\VentaCuota;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
@@ -71,6 +73,8 @@ class CatalogoController extends Controller
             'modalidad_pago' => 'required|string',
             'cuotas_schedule' => 'nullable|array',
             'pago_inicial' => 'nullable|numeric',
+            'lat' => 'nullable|numeric',
+            'lng' => 'nullable|numeric',
         ]);
 
         try {
@@ -113,6 +117,22 @@ class CatalogoController extends Controller
 
             \Log::info('Pedido creado', ['pedido_id' => $pedido->id]);
 
+            // 1.1 Registrar Ubicación de Entrega en PedidoRastreo
+            if ($request->lat && $request->lng) {
+                \App\Models\PedidoRastreo::create([
+                    'pedido_id' => $pedido->id,
+                    'latitud' => $request->lat,
+                    'longitud' => $request->lng,
+                    'hora' => now(),
+                ]);
+
+                // 1.2 Actualizar dirección por defecto del usuario
+                $user->update([
+                    'direccion' => $request->lat . ',' . $request->lng
+                ]);
+                \Log::info('Ubicación de entrega guardada y usuario actualizado', ['lat' => $request->lat, 'lng' => $request->lng]);
+            }
+
             // 2. Crear Detalles del Pedido
             foreach ($request->productos as $prod) {
                 PedidoDetalle::create([
@@ -136,17 +156,51 @@ class CatalogoController extends Controller
 
             \Log::info('Venta creada', ['venta_id' => $venta->id]);
 
+            // 3.1 Registrar Pago inicial en la tabla pagos (si no es QR)
+            // Esto asegura que pagos en efectivo y tarjeta queden registrados en la tabla pagos
+            if ($request->tipo_pago !== 'qr') {
+                Pagos::create([
+                    'venta_id' => $venta->id,
+                    'monto' => $pagoInicial,
+                    'fecha' => now(),
+                    'metodo_pago' => strtolower($request->tipo_pago), // 'efectivo' o 'tarjeta'
+                    'estado' => 'completado',
+                    'referencia_externa' => $request->stripe_payment_id ?? 'pago-manual-' . time(),
+                    'transaction_id' => $request->stripe_payment_id ?? null,
+                    'datos_pago' => [
+                        'cuota_id' => $primeraCuotaId,
+                        'stripe_id' => $request->stripe_payment_id ?? null,
+                        'manual' => true
+                    ]
+                ]);
+                \Log::info('Pago registrado para ' . $request->tipo_pago, ['venta_id' => $venta->id]);
+            }
+
             // 4. Registrar Cuotas (si aplica)
+            $primeraCuotaId = null;
             if ($request->modalidad_pago === 'cuotas' && !empty($request->cuotas_schedule)) {
                 $cuotas = $request->cuotas_schedule;
+                $esPagoQR = ($request->tipo_pago === 'qr');
+
                 foreach ($cuotas as $c) {
-                    $venta->cuotas()->create([
+                    // Si el pago es por QR, la primera cuota NO se marca como pagada aún
+                    // (se marcará cuando el QR sea confirmado por PagoFácil).
+                    // Si es efectivo o tarjeta, la primera cuota se asume pagada en persona.
+                    $esPrimera = ($c['numero'] === 1);
+                    $estadoCuota = ($esPrimera && !$esPagoQR) ? 'pagado' : 'pendiente';
+                    $fechaPagoCuota = ($esPrimera && !$esPagoQR) ? now() : null;
+
+                    $nuevaCuota = $venta->cuotas()->create([
                         'numero_cuota' => $c['numero'],
                         'monto' => $c['monto'],
                         'fecha_vencimiento' => $c['fecha'],
-                        'fecha_pago' => $c['numero'] === 1 ? now() : null,
-                        'estado' => $c['numero'] === 1 ? 'pagado' : 'pendiente',
+                        'fecha_pago' => $fechaPagoCuota,
+                        'estado' => $estadoCuota,
                     ]);
+
+                    if ($esPrimera) {
+                        $primeraCuotaId = $nuevaCuota->id;
+                    }
                 }
             }
 
@@ -173,6 +227,7 @@ class CatalogoController extends Controller
             if ($request->tipo_pago === 'qr') {
                 return Inertia::render('Catalogo/Venta/QRPago', [
                     'venta_id' => $venta->id,
+                    'cuota_id' => $primeraCuotaId, // ID de la primera cuota (null si no es en cuotas)
                     'total' => (float) $pagoInicial, // Usar pago inicial para el QR
                     'productos' => $request->productos,
                     'cliente' => $user,

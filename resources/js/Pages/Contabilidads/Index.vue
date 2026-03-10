@@ -5,10 +5,10 @@ import PowerBICharts from '@/Components/Dashboard/PowerBICharts.vue';
 </script>
 
 <template>
-  <AppLayout title="Métodos y Estadísticas">
+  <AppLayout title="Reportes">
     <template #header>
       <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-        Métodos y Estadísticas
+        Reportes
       </h2>
     </template>
 

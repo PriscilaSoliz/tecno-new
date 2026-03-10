@@ -6,6 +6,8 @@ use App\Models\Pedido;
 use App\Models\PedidoDetalle;
 use App\Models\PedidoRastreo;
 use App\Models\Ubicacion;
+use App\Models\Pagos;
+use App\Models\VentaCuota;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -30,11 +32,11 @@ class PedidoController extends Controller
      */
     public function show($id)
     {
-        $pedido = Pedido::with(['cliente.user', 'detalles.producto', 'venta.cuotas'])->findOrFail($id);
+        $pedido = Pedido::with(['cliente.user', 'detalles.producto', 'venta.cuotas', 'rastreos'])->findOrFail($id);
         $detalles = $pedido->detalles;
 
-        // Obtener rastreo para el mapa
-        $rastreo = PedidoRastreo::where('pedido_id', $id)->latest()->first();
+        // Obtener último rastreo registrado (ubicación de entrega)
+        $rastreo = $pedido->rastreos()->latest()->first();
 
         // Ubicación de la tienda (fija o configurable)
         $tiendaLat = -17.7833; // Santa Cruz, Bolivia ejemplo
@@ -166,16 +168,36 @@ class PedidoController extends Controller
     {
         $cuota = \App\Models\VentaCuota::findOrFail($id);
 
-        // Validar que pertenezca al usuario (indirectamente a través de Venta->Pedido->Cliente)
+        // Validar que pertenezca al usuario (o sea administrador)
         $user = auth()->user();
-        if ($cuota->venta->pedido->cliente_id !== ($user->cliente->id ?? null)) {
+        $isAdmin = $user->hasRole('propietario') || $user->hasRole('administrador');
+
+        if (!$isAdmin && $cuota->venta->pedido->cliente_id !== ($user->cliente->id ?? null)) {
             abort(403);
         }
 
         $cuota->update([
             'estado' => 'pagado',
             'fecha_pago' => now(),
-            // Podríamos guardar el transaction_id si agregamos columna
+        ]);
+
+        // Registrar en la tabla pagos para mantener la integridad del sistema
+        // Si viene payment_id, es porque se pagó con tarjeta (Stripe)
+        $metodo = $request->has('payment_id') ? 'tarjeta' : 'efectivo';
+        
+        Pagos::create([
+            'venta_id' => $cuota->venta_id,
+            'monto' => $cuota->monto,
+            'fecha' => now(),
+            'metodo_pago' => $metodo,
+            'estado' => 'completado',
+            'transaction_id' => $request->payment_id,
+            'referencia_externa' => $request->payment_id ?? 'cuota-manual-' . $cuota->id . '-' . time(),
+            'datos_pago' => [
+                'cuota_id' => $cuota->id,
+                'manual' => true,
+                'payment_id' => $request->payment_id
+            ]
         ]);
 
         return redirect()->back()->with('success', 'Pago registrado correctamente');

@@ -65,12 +65,18 @@ const handleImageError = (e) => {
 
 // Helper: si ya empieza con / o http, usarlo directo; si no, agregar /
 const getImageUrl = (img) => {
+    const baseUrl = usePage().props.app_url || '';
     if (!img) return 'https://placehold.co/400x300/EEE/31343C?text=Producto';
     if (typeof img !== 'string') return 'https://placehold.co/400x300/EEE/31343C?text=Producto';
-    // Si ya es absoluta (empieza con / o http), usarla directamente
-    if (img.startsWith('http') || img.startsWith('/')) return img;
-    // Caso legacy: agregar / al inicio
-    return `/${img}`;
+    
+    // Si es absoluta, usarla directamente
+    if (img.startsWith('http')) return img;
+    
+    // Asegurar que no haya dobles slashes
+    const cleanImg = img.startsWith('/') ? img.substring(1) : img;
+    const cleanBase = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
+    
+    return `${cleanBase}${cleanImg}`;
 };
 
 // Total de items en carrito
@@ -79,7 +85,8 @@ const totalItems = computed(() => carrito.value.reduce((sum, item) => sum + item
 // Ir a página de detalle de venta
 const irAVenta = () => {
     if (carrito.value.length === 0) {
-        alert('El carrito está vacío');
+        if (window.$notify) window.$notify.warning('El carrito está vacío, agrega algunos productos primero.');
+        else alert('El carrito está vacío');
         return;
     }
 

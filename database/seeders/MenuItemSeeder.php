@@ -50,7 +50,7 @@ class MenuItemSeeder extends Seeder
             ],
             // Métodos y Estadísticas - visible para encargadoalmacen y propietario
             [
-                'title' => 'Métodos y Estadísticas',
+                'title' => 'Reportes',
                 'route' => 'metodos.index',
                 'icon' => 'fas fa-calculator',
                 'order' => 5,

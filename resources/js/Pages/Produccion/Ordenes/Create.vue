@@ -67,20 +67,23 @@ const submit = () => {
   // Verificar allocation antes de enviar
   const missing = allocation.value.find(a => a.remaining > 0);
   if (missing) {
-    alert(`Stock insuficiente para ${missing.ingrediente_nombre}. Faltan ${missing.remaining}.`);
+    if (window.$notify) window.$notify.error(`Stock insuficiente para ${missing.ingrediente_nombre}. Faltan ${missing.remaining}.`, 'Inventario');
+    else alert(`Stock insuficiente para ${missing.ingrediente_nombre}. Faltan ${missing.remaining}.`);
     return;
   }
 
   form.post(route('ordenes.store'), {
     preserveScroll: true,
     onSuccess: () => {
+      if (window.$notify) window.$notify.success('Orden de producción creada correctamente.');
       emit('created');
       form.reset();
     },
     onError: (errors) => {
       // Mostrar errores del backend
       const errorMsg = errors.error || errors.producto_id || 'Error al crear la orden';
-      alert(errorMsg);
+      if (window.$notify) window.$notify.error(errorMsg);
+      else alert(errorMsg);
     }
   });
 };

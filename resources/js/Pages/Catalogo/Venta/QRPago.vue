@@ -10,7 +10,8 @@ const props = defineProps({
     total: { type: Number, required: true },
     productos: { type: Array, default: () => [] },
     cliente: { type: Object, default: () => ({}) },
-    es_cuota: { type: Boolean, default: false } // Indica si es pago en cuotas
+    es_cuota: { type: Boolean, default: false }, // Indica si es pago en cuotas
+    cuota_id: { type: Number, default: null }    // ID de la primera cuota si aplica
 });
 
 // Estado
@@ -30,7 +31,11 @@ const handleQRSuccess = (data) => {
     }
 
     // Mostrar mensaje de éxito
-    alert('¡Pago completado! Tu pedido ha sido procesado correctamente.');
+    if (window.$notify) {
+        window.$notify.success('¡Pago completado! Tu pedido ha sido procesado correctamente.');
+    } else {
+        alert('¡Pago completado! Tu pedido ha sido procesado correctamente.');
+    }
 
     // Redirigir a mis pedidos
     setTimeout(() => {
@@ -149,8 +154,8 @@ const volverAlCatalogo = () => {
                         </div>
 
                         <!-- QR Modal Component -->
-                        <QRModal :show="showQRModal" :venta-id="venta_id" :total="total" @close="handleQRClose"
-                            @success="handleQRSuccess" />
+                        <QRModal :show="showQRModal" :venta-id="venta_id" :total="total" :cuota-id="cuota_id"
+                            @close="handleQRClose" @success="handleQRSuccess" />
 
                         <!-- Botón Volver -->
                         <button @click="volverAlCatalogo"

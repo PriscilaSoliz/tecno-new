@@ -172,6 +172,8 @@ Route::middleware([
     Route::prefix('api/dashboard')->group(function () {
         Route::get('/top-products', [VentaController::class, 'topProducts']);
         Route::get('/sales-timeline', [VentaController::class, 'salesTimeline']);
+        Route::get('/payment-methods', [VentaController::class, 'paymentMethods']);
+        Route::get('/daily-revenue', [VentaController::class, 'dailyRevenue']);
     });
 
     // Rutas de PagoFácil - generar QR (autenticada)
