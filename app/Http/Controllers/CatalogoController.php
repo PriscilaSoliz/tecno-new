@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class CatalogoController extends Controller
 {
@@ -84,7 +85,7 @@ class CatalogoController extends Controller
             $total = $request->input('total');
             $pagoInicial = $request->input('pago_inicial', $total); // Default total if not set
 
-            \Log::info('Confirmando pedido para usuario', [
+            Log::info('Confirmando pedido para usuario', [
                 'user_id' => $user->id,
                 'user_name' => $user->name,
                 'roles' => $user->getRoleNames()->toArray(),
@@ -94,7 +95,7 @@ class CatalogoController extends Controller
             // Asegurar que existe el registro de Cliente para este usuario
             $cliente = $user->cliente;
             if (!$cliente) {
-                \Log::info('Creando nuevo registro de Cliente para usuario', ['user_id' => $user->id]);
+                Log::info('Creando nuevo registro de Cliente para usuario', ['user_id' => $user->id]);
                 // La tabla clientes solo tiene: user_id, nit, razon_social
                 $cliente = Cliente::create([
                     'user_id' => $user->id,
@@ -104,7 +105,7 @@ class CatalogoController extends Controller
             }
             $clienteId = $cliente->id;
 
-            \Log::info('Cliente asociado', ['cliente_id' => $clienteId]);
+            Log::info('Cliente asociado', ['cliente_id' => $clienteId]);
 
             // 1. Crear Pedido
             $pedido = Pedido::create([
@@ -115,7 +116,7 @@ class CatalogoController extends Controller
                 'ubicacion_id' => $user->ubicacion ? $user->ubicacion->id : null,
             ]);
 
-            \Log::info('Pedido creado', ['pedido_id' => $pedido->id]);
+            Log::info('Pedido creado', ['pedido_id' => $pedido->id]);
 
             // 1.1 Registrar Ubicación de Entrega en PedidoRastreo
             if ($request->lat && $request->lng) {
@@ -130,7 +131,7 @@ class CatalogoController extends Controller
                 $user->update([
                     'direccion' => $request->lat . ',' . $request->lng
                 ]);
-                \Log::info('Ubicación de entrega guardada y usuario actualizado', ['lat' => $request->lat, 'lng' => $request->lng]);
+                Log::info('Ubicación de entrega guardada y usuario actualizado', ['lat' => $request->lat, 'lng' => $request->lng]);
             }
 
             // 2. Crear Detalles del Pedido
@@ -154,29 +155,9 @@ class CatalogoController extends Controller
                 'cliente_id' => $clienteId,
             ]);
 
-            \Log::info('Venta creada', ['venta_id' => $venta->id]);
+            Log::info('Venta creada', ['venta_id' => $venta->id]);
 
-            // 3.1 Registrar Pago inicial en la tabla pagos (si no es QR)
-            // Esto asegura que pagos en efectivo y tarjeta queden registrados en la tabla pagos
-            if ($request->tipo_pago !== 'qr') {
-                Pagos::create([
-                    'venta_id' => $venta->id,
-                    'monto' => $pagoInicial,
-                    'fecha' => now(),
-                    'metodo_pago' => strtolower($request->tipo_pago), // 'efectivo' o 'tarjeta'
-                    'estado' => 'completado',
-                    'referencia_externa' => $request->stripe_payment_id ?? 'pago-manual-' . time(),
-                    'transaction_id' => $request->stripe_payment_id ?? null,
-                    'datos_pago' => [
-                        'cuota_id' => $primeraCuotaId,
-                        'stripe_id' => $request->stripe_payment_id ?? null,
-                        'manual' => true
-                    ]
-                ]);
-                \Log::info('Pago registrado para ' . $request->tipo_pago, ['venta_id' => $venta->id]);
-            }
-
-            // 4. Registrar Cuotas (si aplica)
+            // 4. Registrar Cuotas PRIMERO (si aplica) para obtener $primeraCuotaId
             $primeraCuotaId = null;
             if ($request->modalidad_pago === 'cuotas' && !empty($request->cuotas_schedule)) {
                 $cuotas = $request->cuotas_schedule;
@@ -202,6 +183,27 @@ class CatalogoController extends Controller
                         $primeraCuotaId = $nuevaCuota->id;
                     }
                 }
+                Log::info('Cuotas creadas', ['primera_cuota_id' => $primeraCuotaId]);
+            }
+
+            // 3.1 Registrar Pago inicial en la tabla pagos (si no es QR)
+            // Se hace DESPUÉS de crear las cuotas para tener disponible $primeraCuotaId
+            if ($request->tipo_pago !== 'qr') {
+                Pagos::create([
+                    'venta_id' => $venta->id,
+                    'monto' => $pagoInicial,
+                    'fecha' => now(),
+                    'metodo_pago' => strtolower($request->tipo_pago), // 'efectivo' o 'tarjeta'
+                    'estado' => 'completado',
+                    'referencia_externa' => $request->stripe_payment_id ?? 'pago-manual-' . time(),
+                    'transaction_id' => $request->stripe_payment_id ?? null,
+                    'datos_pago' => [
+                        'cuota_id' => $primeraCuotaId,
+                        'stripe_id' => $request->stripe_payment_id ?? null,
+                        'manual' => true
+                    ]
+                ]);
+                Log::info('Pago registrado para ' . $request->tipo_pago, ['venta_id' => $venta->id, 'cuota_id' => $primeraCuotaId]);
             }
 
             // 5. Registrar Detalles de Venta
@@ -217,7 +219,7 @@ class CatalogoController extends Controller
 
             DB::commit();
 
-            \Log::info('Pedido confirmado exitosamente', [
+            Log::info('Pedido confirmado exitosamente', [
                 'pedido_id' => $pedido->id,
                 'venta_id' => $venta->id,
                 'tipo_pago' => $request->tipo_pago,
@@ -240,7 +242,7 @@ class CatalogoController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Error al confirmar pedido', [
+            Log::error('Error al confirmar pedido', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'user_id' => Auth::id(),

@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 
 const props = defineProps({
     items: { type: Array, default: () => [] }
@@ -24,7 +25,21 @@ const decrementar = (item) => {
 };
 
 const handleImageError = (e) => {
-    e.target.src = 'https://placehold.co/100x100/EEE/31343C?text=IMG';
+    if (!e.target.src.includes('placehold.co')) {
+        e.target.src = 'https://placehold.co/100x100/EEE/31343C?text=IMG';
+    }
+};
+
+// Construye la URL correcta de imagen usando app_url del servidor
+// Mismo patrón que usa index.vue del catálogo
+const getImageUrl = (img) => {
+    const baseUrl = usePage().props.app_url || '';
+    if (!img) return 'https://placehold.co/100x100/EEE/31343C?text=Producto';
+    if (typeof img !== 'string') return 'https://placehold.co/100x100/EEE/31343C?text=Producto';
+    if (img.startsWith('http')) return img;
+    const cleanImg = img.startsWith('/') ? img.substring(1) : img;
+    const cleanBase = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
+    return `${cleanBase}${cleanImg}`;
 };
 </script>
 
@@ -52,7 +67,7 @@ const handleImageError = (e) => {
                 
                 <!-- Imagen -->
                 <div class="w-20 h-20 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
-                    <img :src="item.imagen" 
+                    <img :src="getImageUrl(item.imagen)" 
                          class="w-full h-full object-cover" 
                          alt="Producto" 
                          @error="handleImageError"/>
