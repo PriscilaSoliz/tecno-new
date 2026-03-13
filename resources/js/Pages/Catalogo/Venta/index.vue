@@ -148,7 +148,7 @@ const submitOrder = (montoInicial, stripePaymentIntent = null) => {
 
 const handleStripeSuccess = (paymentIntent) => {
     showStripeModal.value = false;
-    alert('¡Pago con tarjeta exitoso!');
+    notifySuccess('¡Pago con tarjeta exitoso!');
     processing.value = true;
     submitOrder(amountForStripe.value, paymentIntent);
 };

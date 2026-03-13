@@ -208,8 +208,6 @@ const copiarNroPago = () => {
         navigator.clipboard.writeText(nroPago.value);
         if (window.$notify) {
             window.$notify.success('Referencia copiada al portapapeles');
-        } else {
-            alert('Número de pago copiado al portapapeles');
         }
     }
 };

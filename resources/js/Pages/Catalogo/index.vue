@@ -39,7 +39,6 @@ const productosFiltrados = computed(() => {
 const agregarAlCarrito = (producto) => {
     if (producto.stock <= 0) {
         if (window.$notify) window.$notify.warning('Producto sin stock disponible.');
-        else alert('Producto sin stock disponible.');
         return;
     }
 
@@ -50,7 +49,6 @@ const agregarAlCarrito = (producto) => {
     if (existe) {
         if (existe.cantidad >= producto.stock) {
             if (window.$notify) window.$notify.warning('Ya has alcanzado el máximo de unidades disponibles en stock.');
-            else alert('Ya has alcanzado el máximo de unidades disponibles en stock.');
             return;
         }
         existe.cantidad++;
@@ -98,7 +96,6 @@ const totalItems = computed(() => carrito.value.reduce((sum, item) => sum + item
 const irAVenta = () => {
     if (carrito.value.length === 0) {
         if (window.$notify) window.$notify.warning('El carrito está vacío, agrega algunos productos primero.');
-        else alert('El carrito está vacío');
         return;
     }
 

@@ -26,7 +26,7 @@ const search = () => {
 
 const downloadPDF = () => {
     if (!props.kardex || props.kardex.length === 0) {
-        alert('No hay datos para exportar');
+        if (window.$notify) window.$notify.warning('No hay datos para exportar');
         return;
     }
 
@@ -73,7 +73,7 @@ const downloadPDF = () => {
         doc.save(`kardex_peps_${props.selectedIngrediente?.nombre || 'reporte'}_${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (err) {
         console.error('Error generando PDF PEPS:', err);
-        alert('No se pudo generar el PDF. Revisa la consola.');
+        if (window.$notify) window.$notify.error('No se pudo generar el PDF. Revisa la consola.');
     }
 };
 </script>

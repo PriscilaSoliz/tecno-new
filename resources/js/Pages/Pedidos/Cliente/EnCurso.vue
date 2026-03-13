@@ -130,11 +130,9 @@ const handleStripeSuccess = (paymentIntent) => {
   }, {
     onSuccess: () => {
       if (window.$notify) window.$notify.success('¡Cuota pagada exitosamente!');
-      else alert('¡Cuota pagada exitosamente!');
     },
     onError: () => {
       if (window.$notify) window.$notify.error('Error al registrar el pago en el sistema.');
-      else alert('Error al registrar el pago en el sistema.');
     }
   });
 };

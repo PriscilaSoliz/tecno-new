@@ -19,7 +19,6 @@ const eliminarItem = (index) => {
 const incrementar = (item) => {
     if (item.cantidad >= item.stock_max) {
         if (window.$notify) window.$notify.warning('Manejo de stock: No hay más unidades disponibles.');
-        else alert('Manejo de stock: No hay más unidades disponibles.');
         return;
     }
     item.cantidad++;

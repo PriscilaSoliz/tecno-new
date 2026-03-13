@@ -68,7 +68,6 @@ const submit = () => {
   const missing = allocation.value.find(a => a.remaining > 0);
   if (missing) {
     if (window.$notify) window.$notify.error(`Stock insuficiente para ${missing.ingrediente_nombre}. Faltan ${missing.remaining}.`, 'Inventario');
-    else alert(`Stock insuficiente para ${missing.ingrediente_nombre}. Faltan ${missing.remaining}.`);
     return;
   }
 
@@ -83,7 +82,6 @@ const submit = () => {
       // Mostrar errores del backend
       const errorMsg = errors.error || errors.producto_id || 'Error al crear la orden';
       if (window.$notify) window.$notify.error(errorMsg);
-      else alert(errorMsg);
     }
   });
 };
