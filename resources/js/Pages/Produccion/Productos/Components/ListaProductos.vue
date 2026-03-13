@@ -50,6 +50,11 @@
 							<p class="text-lg font-extrabold text-gray-900">Bs{{ Number(p.precio_venta).toFixed(2) }}
 							</p>
 						</td>
+						<td class="px-6 py-4 text-sm font-bold text-gray-700">
+							<span :class="p.stock > 0 ? 'text-green-600' : 'text-red-600'">
+								{{ p.stock ?? 0 }}
+							</span>
+						</td>
 						<td class="px-6 py-4 whitespace-nowrap">
 							<span
 								:class="['inline-flex px-2 py-1 text-xs font-semibold rounded-full', p.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800']">
@@ -155,6 +160,7 @@ const columns = [
 	{ field: 'nombre', label: 'Producto' },
 	{ field: 'unidad_medida', label: 'Unidad' },
 	{ field: 'precio_venta', label: 'Precio' },
+	{ field: 'stock', label: 'Stock' },
 	{ field: 'is_active', label: 'Estado' }
 ];
 

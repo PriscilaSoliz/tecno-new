@@ -18,7 +18,7 @@ class PedidoController extends Controller
      */
     public function index()
     {
-        $pedidos = Pedido::with(['cliente.user', 'detalles.producto'])
+        $pedidos = Pedido::with(['cliente.user', 'detalles.producto', 'venta'])
             ->orderBy('created_at', 'desc')
             ->get();
 

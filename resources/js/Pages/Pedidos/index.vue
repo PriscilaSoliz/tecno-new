@@ -3,6 +3,9 @@ import { ref, computed } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ListaPedidos from './Components/ListaPedidos.vue';
+import { useNotifications } from '@/Composables/useNotifications';
+
+const { confirm, success, error } = useNotifications();
 
 const props = defineProps({
   pedidos: { type: Array, default: () => [] }
@@ -40,7 +43,15 @@ const filtered = computed(() => {
 });
 
 const verPedido = (pedido) => router.get(route('pedidos.show', pedido.id));
-const quickComplete = (pedido) => router.post(route('pedidos.quick-complete', pedido.id));
+const quickComplete = async (pedido) => {
+    const isConfirmed = await confirm(`¿Deseas avanzar el estado del pedido #${pedido.id}?`, 'Avanzar Estado');
+    if(isConfirmed) {
+        router.post(route('pedidos.quick-complete', pedido.id), {}, {
+            onSuccess: () => success('Estado avanzado exitosamente.'),
+            onError: () => error('Ocurrió un error al avanzar el estado.')
+        });
+    }
+};
 </script>
 
 <template>

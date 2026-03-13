@@ -15,13 +15,7 @@
             </div>
         </template>
 
-        <!-- Mensaje de Éxito -->
-        <div v-if="showSuccessMessage" class="fixed top-4 right-4 z-50">
-            <div class="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-2 animate-fade-in">
-                <i class="fas fa-check-circle"></i>
-                <span>{{ successMessage }}</span>
-            </div>
-        </div>
+
 
         <div class="py-8">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -302,6 +296,9 @@
 import { ref, computed } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { useNotifications } from '@/Composables/useNotifications';
+
+const { success, error } = useNotifications();
 
 // Props que vienen del controlador con datos reales
 const props = defineProps({
@@ -321,8 +318,6 @@ const searchQuery = ref('');
 const statusFilter = ref('');
 const showEditModal = ref(false);
 const showCreateModal = ref(false);
-const showSuccessMessage = ref(false);
-const successMessage = ref('');
 const sortField = ref('id');
 const sortDirection = ref('desc');
 
@@ -397,13 +392,7 @@ const sortBy = (field) => {
     }
 };
 
-const showSuccessAlert = (message) => {
-    successMessage.value = message;
-    showSuccessMessage.value = true;
-    setTimeout(() => {
-        showSuccessMessage.value = false;
-    }, 4000);
-};
+
 
 const openEditModal = (proveedor) => {
     editForm.value = {
@@ -437,12 +426,16 @@ const createProveedor = async () => {
         await router.post(route('proveedores.store'), payload, {
             onSuccess: () => {
                 closeCreateModal();
-                showSuccessAlert('Proveedor creado exitosamente');
+                success('Proveedor creado exitosamente', 'Éxito');
             },
-            onError: (errors) => console.error('Error creando proveedor:', errors),
+            onError: (errors) => {
+                error('Revisa los datos ingresados', 'Error al crear');
+                console.error('Error creando proveedor:', errors);
+            },
         });
-    } catch (error) {
-        console.error('Error creando proveedor:', error);
+    } catch (e) {
+        error('Ocurrió un error inesperado al intentar crear', 'Error');
+        console.error('Error creando proveedor:', e);
     }
 };
 
@@ -458,12 +451,16 @@ const updateProveedor = async () => {
         await router.put(route('proveedores.update', editForm.value.id), payload, {
             onSuccess: () => {
                 closeEditModal();
-                showSuccessAlert('Proveedor actualizado correctamente');
+                success('Proveedor actualizado correctamente', 'Éxito');
             },
-            onError: (errors) => console.error('Error actualizando proveedor:', errors),
+            onError: (errors) => {
+                error('Revisa los datos ingresados', 'Error al actualizar');
+                console.error('Error actualizando proveedor:', errors);
+            },
         });
-    } catch (error) {
-        console.error('Error actualizando proveedor:', error);
+    } catch (e) {
+        error('Ocurrió un error inesperado al intentar actualizar', 'Error');
+        console.error('Error actualizando proveedor:', e);
     }
 };
 
@@ -475,11 +472,15 @@ const toggleStatus = async (proveedor) => {
             contacto: proveedor.contacto,
             estado: newStatus
         }, {
-            onSuccess: () => showSuccessAlert(`Proveedor ${newStatus ? 'activado' : 'desactivado'} correctamente`),
-            onError: (errors) => console.error('Error cambiando estado:', errors)
+            onSuccess: () => success(`Proveedor ${newStatus ? 'activado' : 'desactivado'} correctamente`, 'Éxito'),
+            onError: (errors) => {
+                error('Ocurrió un error al cambiar el estado del proveedor', 'Error');
+                console.error('Error cambiando estado:', errors);
+            }
         });
-    } catch (error) {
-        console.error('Error cambiando estado:', error);
+    } catch (e) {
+        error('Error inesperado cambiando el estado', 'Error');
+        console.error('Error cambiando estado:', e);
     }
 };
 </script>

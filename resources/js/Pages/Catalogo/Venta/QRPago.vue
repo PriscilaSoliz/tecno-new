@@ -3,9 +3,13 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import QRModal from '@/Pages/PagoFacil/QRModal.vue';
+import { useNotifications } from '@/Composables/useNotifications';
 import axios from 'axios';
 
+const { success, error } = useNotifications();
+
 const props = defineProps({
+    pedido_id: { type: Number, required: true },
     venta_id: { type: Number, required: true },
     total: { type: Number, required: true },
     productos: { type: Array, default: () => [] },
@@ -31,15 +35,11 @@ const handleQRSuccess = (data) => {
     }
 
     // Mostrar mensaje de éxito
-    if (window.$notify) {
-        window.$notify.success('¡Pago completado! Tu pedido ha sido procesado correctamente.');
-    } else {
-        alert('¡Pago completado! Tu pedido ha sido procesado correctamente.');
-    }
+    success('¡Pago completado! Tu pedido ha sido procesado correctamente.', 'Éxito');
 
-    // Redirigir a mis pedidos
+    // Redirigir al detalle del pedido
     setTimeout(() => {
-        router.visit(route('cliente.pedidos.index'));
+        router.visit(route('cliente.pedidos.show', props.pedido_id));
     }, 1000);
 };
 

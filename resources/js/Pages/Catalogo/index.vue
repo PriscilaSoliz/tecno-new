@@ -37,11 +37,22 @@ const productosFiltrados = computed(() => {
 
 // Agregar al carrito
 const agregarAlCarrito = (producto) => {
+    if (producto.stock <= 0) {
+        if (window.$notify) window.$notify.warning('Producto sin stock disponible.');
+        else alert('Producto sin stock disponible.');
+        return;
+    }
+
     const existe = carrito.value.find(item => item.id === producto.id);
     // Calcular precio final (promo o venta)
     const precioFinal = producto.promocion ? Number(producto.promocion.precio) : Number(producto.precio_venta);
 
     if (existe) {
+        if (existe.cantidad >= producto.stock) {
+            if (window.$notify) window.$notify.warning('Ya has alcanzado el máximo de unidades disponibles en stock.');
+            else alert('Ya has alcanzado el máximo de unidades disponibles en stock.');
+            return;
+        }
         existe.cantidad++;
     } else {
         carrito.value.push({
@@ -49,6 +60,7 @@ const agregarAlCarrito = (producto) => {
             nombre: producto.nombre,
             precio: precioFinal,
             imagen: producto.imagen,
+            stock_max: producto.stock,
             cantidad: 1
         });
     }
@@ -149,8 +161,10 @@ const irAVenta = () => {
                                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                 @error="handleImageError" />
                             <div
-                                class="absolute top-2 right-2 bg-white/90 backdrop-blur text-emerald-600 text-xs px-2 py-1 rounded-md font-bold shadow-sm">
-                                Disponible
+                                :class="producto.stock > 0 ? 'text-emerald-600' : 'text-red-600 bg-red-100'"
+                                class="absolute top-2 right-2 bg-white/90 backdrop-blur text-xs px-2 py-1 rounded-md font-bold shadow-sm">
+                                <span v-if="producto.stock > 0">Stock: {{ producto.stock }}</span>
+                                <span v-else>Agotado</span>
                             </div>
                             <!-- Badge OFERTA (Top Left) -->
                             <div v-if="producto.promocion"
@@ -186,7 +200,9 @@ const irAVenta = () => {
                                     </p>
                                 </div>
                                 <button @click="agregarAlCarrito(producto)"
-                                    class="bg-amber-100 text-amber-700 hover:bg-amber-600 hover:text-white px-3 py-1.5 rounded-lg transition-all duration-200 font-medium flex items-center gap-1 shadow-sm hover:shadow-md">
+                                    :disabled="producto.stock <= 0"
+                                    :class="producto.stock <= 0 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-amber-100 text-amber-700 hover:bg-amber-600 hover:text-white'"
+                                    class="px-3 py-1.5 rounded-lg transition-all duration-200 font-medium flex items-center gap-1 shadow-sm hover:shadow-md">
                                     <i class="fas fa-plus text-sm"></i>
                                     Agregar
                                 </button>

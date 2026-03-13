@@ -179,6 +179,9 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { router } from '@inertiajs/vue3';
+import { useNotifications } from '@/Composables/useNotifications';
+
+const { confirm, success, error } = useNotifications();
 
 const props = defineProps({
     recetas: { type: Array, default: () => [] },
@@ -232,21 +235,37 @@ const closeCreateModal = () => { showCreateModal.value = false; createForm.value
 
 const createReceta = () => {
     router.post(route('recetas.store'), createForm.value, {
-        onSuccess: () => closeCreateModal(),
-        onError: (errors) => console.error(errors)
+        onSuccess: () => {
+            closeCreateModal();
+            success('Receta creada exitosamente', 'Éxito');
+        },
+        onError: (errors) => {
+            error('Revisa los datos ingresados', 'Error al crear');
+            console.error(errors);
+        }
     });
 };
 
 const updateReceta = () => {
     router.put(route('recetas.update', editForm.value.id), editForm.value, {
-        onSuccess: () => closeEditModal(),
-        onError: (errors) => console.error(errors)
+        onSuccess: () => {
+            closeEditModal();
+            success('Receta actualizada exitosamente', 'Éxito');
+        },
+        onError: (errors) => {
+            error('Revisa los datos ingresados', 'Error al actualizar');
+            console.error(errors);
+        }
     });
 };
 
-const deleteReceta = (receta) => {
-    if (confirm('¿Eliminar receta?')) {
-        router.delete(route('recetas.destroy', receta.id));
+const deleteReceta = async (receta) => {
+    const isConfirmed = await confirm('¿Eliminar la receta seleccionada de forma permanente?', 'Eliminar Receta');
+    if (isConfirmed) {
+        router.delete(route('recetas.destroy', receta.id), {
+            onSuccess: () => success('Receta eliminada exitosamente', 'Éxito'),
+            onError: () => error('No se pudo eliminar la receta', 'Error')
+        });
     }
 };
 

@@ -1,7 +1,10 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { router, usePage } from '@inertiajs/vue3';
+import { router, usePage, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { useNotifications } from '@/Composables/useNotifications';
+
+const { confirm, success, error } = useNotifications();
 
 const props = defineProps({
     carrito: Array,
@@ -21,16 +24,20 @@ const form = useForm({
 });
 
 const finalizarCompra = async () => {
-    if (window.$notify) {
-        const ok = await window.$notify.confirm(
-            'Confirmar Pedido',
-            `¿Deseas confirmar tu compra por Bs ${total.value.toFixed(2)}?`
-        );
-        if (!ok) return;
-    } else {
-        if (!confirm('¿Confirmar compra?')) return;
-    }
-    form.post(route('catalogo.confirmar'));
+    const ok = await confirm(
+        `¿Deseas confirmar tu compra por Bs ${total.value.toFixed(2)}?`, 
+        'Confirmar Pedido'
+    );
+    if (!ok) return;
+
+    form.post(route('catalogo.confirmar'), {
+        onSuccess: () => {
+             success('Tu compra ha sido confirmada con éxito', 'Pedido Realizado');
+        },
+        onError: () => {
+             error('Ocurrió un error al procesar tu compra');
+        }
+    });
 };
 
 const montoPorCuota = computed(() => {

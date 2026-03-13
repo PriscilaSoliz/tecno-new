@@ -8,6 +8,9 @@ import InputLabel from '@/Components/InputLabel.vue';
 import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
+import { useNotifications } from '@/Composables/useNotifications';
+
+const { confirm, success, error } = useNotifications();
 
 const props = defineProps({
     users: Object, 
@@ -67,18 +70,38 @@ const closeModal = () => {
 const save = () => {
     if (editingUser.value) {
         form.put(route('users.update', editingUser.value.id), {
-            onSuccess: () => closeModal(),
+            onSuccess: () => {
+                closeModal();
+                success('Usuario actualizado correctamente');
+            },
+            onError: () => {
+                error('Error al actualizar el usuario. Verifique los datos.');
+            }
         });
     } else {
         form.post(route('users.store'), {
-            onSuccess: () => closeModal(),
+            onSuccess: () => {
+                closeModal();
+                success('Usuario registrado correctamente');
+            },
+            onError: () => {
+                error('Error al registrar el usuario. Verifique los datos.');
+            }
         });
     }
 };
 
-const deleteUser = (user) => {
-    if (confirm('¿Estás seguro de que deseas eliminar este usuario?')) {
-        router.delete(route('users.destroy', user.id));
+const deleteUser = async (user) => {
+    const isConfirmed = await confirm('¿Estás seguro de que deseas eliminar a ' + user.name + '?', 'Eliminar Usuario');
+    if (isConfirmed) {
+        router.delete(route('users.destroy', user.id), {
+            onSuccess: () => {
+                success('Usuario eliminado correctamente');
+            },
+            onError: () => {
+                error('No se pudo eliminar el usuario');
+            }
+        });
     }
 };
 

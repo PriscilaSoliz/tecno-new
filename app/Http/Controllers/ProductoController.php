@@ -12,7 +12,7 @@ class ProductoController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Producto::select(['id', 'nombre', 'unidad_medida', 'precio_venta', 'descripcion', 'imagen', 'is_active']);
+        $query = Producto::select(['id', 'nombre', 'unidad_medida', 'precio_venta', 'descripcion', 'imagen', 'is_active', 'stock']);
 
         if ($request->has('search')) {
             $search = $request->input('search');

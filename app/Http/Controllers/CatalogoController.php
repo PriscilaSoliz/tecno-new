@@ -10,6 +10,7 @@ use App\Models\DetalleVenta;
 use App\Models\Cliente;
 use App\Models\Pagos;
 use App\Models\VentaCuota;
+use App\Models\MovimientoProducto;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +23,7 @@ class CatalogoController extends Controller
     {
         // Obtener productos activos con los campos necesarios para el catálogo
         $productos = Producto::where('is_active', true)
-            ->select(['id', 'nombre', 'precio_venta', 'descripcion', 'imagen', 'unidad_medida', 'has_promo'])
+            ->select(['id', 'nombre', 'precio_venta', 'descripcion', 'imagen', 'unidad_medida', 'has_promo', 'stock'])
             ->with([
                 'promocion' => function ($query) {
                     $query->where('is_active', true)
@@ -107,6 +108,14 @@ class CatalogoController extends Controller
 
             Log::info('Cliente asociado', ['cliente_id' => $clienteId]);
 
+            // 0. Validar stock antes de crear pedido
+            foreach ($request->productos as $prod) {
+                $productoModel = Producto::findOrFail($prod['id']);
+                if ($productoModel->stock < $prod['cantidad']) {
+                    throw new \Exception("Stock insuficiente para: {$productoModel->nombre}. Disponible: {$productoModel->stock}.");
+                }
+            }
+
             // 1. Crear Pedido
             $pedido = Pedido::create([
                 'fecha' => now(),
@@ -134,7 +143,7 @@ class CatalogoController extends Controller
                 Log::info('Ubicación de entrega guardada y usuario actualizado', ['lat' => $request->lat, 'lng' => $request->lng]);
             }
 
-            // 2. Crear Detalles del Pedido
+            // 2. Crear Detalles del Pedido y Descontar Stock
             foreach ($request->productos as $prod) {
                 PedidoDetalle::create([
                     'cantidad' => $prod['cantidad'],
@@ -142,6 +151,17 @@ class CatalogoController extends Controller
                     'subtotal' => $prod['precio'] * $prod['cantidad'],
                     'pedido_id' => $pedido->id,
                     'producto_id' => $prod['id'],
+                ]);
+
+                // Descontar stock y registrar movimiento (salida)
+                $productoModel = Producto::find($prod['id']);
+                $productoModel->decrement('stock', $prod['cantidad']);
+
+                MovimientoProducto::create([
+                    'producto_id' => $prod['id'],
+                    'tipo_movimiento' => 'salida',
+                    'cantidad' => $prod['cantidad'],
+                    'fecha' => now(),
                 ]);
             }
 
@@ -228,6 +248,7 @@ class CatalogoController extends Controller
             // Si es pago por QR
             if ($request->tipo_pago === 'qr') {
                 return Inertia::render('Catalogo/Venta/QRPago', [
+                    'pedido_id' => $pedido->id,
                     'venta_id' => $venta->id,
                     'cuota_id' => $primeraCuotaId, // ID de la primera cuota (null si no es en cuotas)
                     'total' => (float) $pagoInicial, // Usar pago inicial para el QR
@@ -237,8 +258,8 @@ class CatalogoController extends Controller
                 ]);
             }
 
-            // Redirigir a mis pedidos (disponible para todos los roles autenticados)
-            return redirect()->route('cliente.pedidos.index')->with('success', 'Pedido realizado con éxito');
+            // Redirigir al detalle del pedido recién creado (disponible para todos los roles autenticados)
+            return redirect()->route('cliente.pedidos.show', $pedido->id)->with('success', 'Pedido realizado con éxito');
 
         } catch (\Exception $e) {
             DB::rollBack();

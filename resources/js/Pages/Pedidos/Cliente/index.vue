@@ -3,6 +3,9 @@ import { ref, computed } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ListaPedidos from '../Components/ListaPedidos.vue';
+import { useNotifications } from '@/Composables/useNotifications';
+
+const { confirm, success, error } = useNotifications();
 
 const props = defineProps({
   enCurso: { type: Array, default: () => [] },
@@ -14,6 +17,15 @@ const norm = t => (t||'').toLowerCase();
 const filtrar = list => list.filter(p => norm(p.cliente?.nombre || p.id.toString()).includes(norm(search.value)));
 
 const ver = p => router.get(route('cliente.pedidos.show', p.id));
+const quickComplete = async (pedido) => {
+    const isConfirmed = await confirm(`¿Deseas avanzar el estado del pedido #${pedido.id}?`, 'Avanzar Estado');
+    if(isConfirmed) {
+        router.post(route('pedidos.quick-complete', pedido.id), {}, {
+            onSuccess: () => success('Estado avanzado exitosamente.'),
+            onError: () => error('Ocurrió un error al avanzar el estado.')
+        });
+    }
+};
 </script>
 
 <template>
@@ -33,11 +45,11 @@ const ver = p => router.get(route('cliente.pedidos.show', p.id));
     <div class="py-8 max-w-7xl mx-auto sm:px-6 lg:px-8">
       <div class="bg-white shadow sm:rounded-lg p-6 mb-6">
         <h3 class="font-bold mb-3 text-lg text-amber-700 border-b pb-2">En curso</h3>
-        <ListaPedidos :items="filtrar(props.enCurso)" :showCliente="false" @ver="ver" />
+        <ListaPedidos :items="filtrar(props.enCurso)" :showCliente="false" @ver="ver" @quick="quickComplete" />
       </div>
       <div class="bg-white shadow sm:rounded-lg p-6">
         <h3 class="font-bold mb-3 text-lg text-gray-700 border-b pb-2">Historial</h3>
-        <ListaPedidos :items="filtrar(props.realizados)" :showCliente="false" @ver="ver" />
+        <ListaPedidos :items="filtrar(props.realizados)" :showCliente="false" @ver="ver" @quick="quickComplete" />
       </div>
     </div>
   </AppLayout>

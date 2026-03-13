@@ -5,6 +5,9 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import ListaProductos from './Components/ListaProductos.vue';
 import CreateProductoModal from './Create.vue';
 import UpdateProductoModal from './Update.vue';
+import { useNotifications } from '@/Composables/useNotifications';
+
+const { confirm, success, error } = useNotifications();
 
 const props = defineProps({
   productos: { type: Array, default: () => [] }
@@ -16,18 +19,9 @@ watch(() => props.productos, (n) => productosLocal.value = (n||[]).map(p => ({ .
 const showCreateModal = ref(false);
 const showEditModal = ref(false);
 const editingProduct = ref(null);
-const showSuccess = ref(false);
-const successMessage = ref('');
-
-const openCreateModal = () => showCreateModal.value = true;
-const closeCreateModal = () => showCreateModal.value = false;
-
 const onCreated = () => {
   showCreateModal.value = false;
-  showSuccess.value = true;
-  successMessage.value = 'Producto creado correctamente';
-  setTimeout(()=> showSuccess.value=false, 3000);
-  // backend reload already happens from modal
+  success('Producto creado correctamente', 'Éxito');
 };
 
 const openEditModal = (p) => { editingProduct.value = p; showEditModal.value = true; };
@@ -35,9 +29,7 @@ const closeEditModal = () => { editingProduct.value = null; showEditModal.value 
 
 const onUpdated = () => {
   showEditModal.value = false;
-  showSuccess.value = true;
-  successMessage.value = 'Producto actualizado correctamente';
-  setTimeout(()=> showSuccess.value=false, 3000);
+  success('Producto actualizado correctamente', 'Éxito');
 };
 
 const onToggle = async (p) => {
@@ -48,20 +40,25 @@ const onToggle = async (p) => {
     await router.put(route('productos.update', p.id), {
       nombre: p.nombre, unidad_medida: p.unidad_medida, precio_venta: p.precio_venta, descripcion: p.descripcion, is_active: newState
     });
-    showSuccess.value = true; successMessage.value = `Producto ${newState ? 'activado' : 'desactivado'}`; setTimeout(()=>showSuccess.value=false,3000);
+    success(`Producto ${newState ? 'activado' : 'desactivado'}`);
   } catch (e) {
     if(found) found.is_active = !newState;
+    error('Ocurrió un error al cambiar el estado', 'Error');
     console.error(e);
   }
 };
 
 const onDelete = async (p) => {
-  if(!confirm(`Eliminar producto "${p.nombre}"? Esta acción es definitiva.`)) return;
+  const isConfirmed = await confirm(`¿Eliminar producto "${p.nombre}"? Esta acción es definitiva.`, 'Eliminar Producto');
+  if(!isConfirmed) return;
   try {
     await router.delete(route('productos.destroy', p.id), {
-      onSuccess: () => { showSuccess.value=true; successMessage.value='Producto eliminado'; setTimeout(()=>showSuccess.value=false,3000); }
+      onSuccess: () => { success('Producto eliminado exitosamente', 'Éxito'); }
     });
-  } catch(e){ console.error(e); }
+  } catch(e){ 
+      error('Ocurrió un error al eliminar', 'Error');
+      console.error(e); 
+  }
 };
 </script>
 
@@ -85,10 +82,6 @@ const onDelete = async (p) => {
     <div class="py-12 bg-gray-50 dark:bg-gray-900">
       <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
         <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xl sm:rounded-lg p-6">
-
-          <div v-if="showSuccess" class="mb-4 text-sm text-green-700 bg-green-100 px-4 py-2 rounded">
-            {{ successMessage }}
-          </div>
 
           <ListaProductos :products="productosLocal" @edit="openEditModal" @toggle="onToggle" @delete="onDelete" />
         </div>

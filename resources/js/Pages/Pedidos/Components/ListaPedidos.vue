@@ -58,6 +58,9 @@ const canAdvance = userRoles.some(r => ['propietario', 'encargadoalmacen', 'prod
               :class="[estadoColor[p.estado_produccion] || 'bg-gray-100 text-gray-800', 'px-2 py-1 rounded-full text-xs font-medium']">
               {{ estadoLabel[p.estado_produccion] || p.estado_produccion }}
             </span>
+            <span v-if="p.venta?.tipo_pago" class="text-xs text-purple-600 font-bold uppercase mt-1">
+              {{ p.venta.tipo_pago }}
+            </span>
             <!-- Indicador de Pago Pendiente -->
             <span v-if="p.venta?.cuotas?.some(c => c.estado !== 'pagado')"
               class="px-2 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-600 border border-amber-200">

@@ -17,6 +17,11 @@ const eliminarItem = (index) => {
 };
 
 const incrementar = (item) => {
+    if (item.cantidad >= item.stock_max) {
+        if (window.$notify) window.$notify.warning('Manejo de stock: No hay más unidades disponibles.');
+        else alert('Manejo de stock: No hay más unidades disponibles.');
+        return;
+    }
     item.cantidad++;
 };
 
@@ -90,7 +95,9 @@ const getImageUrl = (img) => {
                             </button>
                             <span class="w-10 text-center text-sm font-bold text-gray-800">{{ item.cantidad }}</span>
                             <button @click="incrementar(item)" 
-                                    class="w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded-r-lg text-gray-600 transition-colors">
+                                    :disabled="item.cantidad >= item.stock_max"
+                                    :class="item.cantidad >= item.stock_max ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-100'"
+                                    class="w-8 h-8 flex items-center justify-center rounded-r-lg transition-colors">
                                 <i class="fas fa-plus text-xs"></i>
                             </button>
                         </div>

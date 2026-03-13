@@ -1,7 +1,7 @@
 <template>
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+  <div :class="isProduccionOnly ? 'flex justify-center max-w-2xl mx-auto' : 'grid grid-cols-1 md:grid-cols-2 gap-8'">
     <!-- Tarjeta Recetas -->
-    <a :href="route('recetas.index')"
+    <a v-if="!isProduccionOnly" :href="route('recetas.index')"
        class="card-hover block rounded-2xl shadow-md overflow-hidden border-2 hover:shadow-xl transition-all duration-300"
        :style="{ background: 'linear-gradient(135deg, var(--bg-medium) 0%, rgba(255,255,255,0.02) 100%)', color: 'var(--text-primary)', borderColor: 'var(--border)' }">
       <div class="p-6 flex flex-col items-center text-center">
@@ -18,7 +18,7 @@
     </a>
 
     <!-- Tarjeta Productos -->
-    <a :href="route('productos.index')"
+    <a v-if="!isProduccionOnly" :href="route('productos.index')"
        class="card-hover block rounded-2xl shadow-md overflow-hidden border-2 hover:shadow-xl transition-all duration-300"
        :style="{ background: 'linear-gradient(135deg, var(--bg-medium) 0%, rgba(255,255,255,0.02) 100%)', color: 'var(--text-primary)', borderColor: 'var(--border)' }">
       <div class="p-6 flex flex-col items-center text-center">
@@ -36,7 +36,7 @@
 
     <!-- Tarjeta Órdenes -->
     <a :href="route('ordenes.index')"
-       class="card-hover block rounded-2xl shadow-md overflow-hidden border-2 hover:shadow-xl transition-all duration-300 md:col-span-2"
+       :class="['card-hover block rounded-2xl shadow-md overflow-hidden border-2 hover:shadow-xl transition-all duration-300', isProduccionOnly ? 'w-full' : 'md:col-span-2']"
        :style="{ background: 'linear-gradient(135deg, var(--bg-medium) 0%, rgba(255,255,255,0.02) 100%)', color: 'var(--text-primary)', borderColor: 'var(--border)' }">
       <div class="p-6 flex flex-col items-center text-center">
         <div class="icon-container mb-5 p-5 rounded-2xl" :style="{ backgroundColor: 'var(--secondary)' }">
@@ -54,6 +54,15 @@
 </template>
 
 <script setup>
+import { usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
+
+const page = usePage();
+const roles = computed(() => page.props.auth?.user?.roles || []);
+const isProduccionOnly = computed(() => {
+  return roles.value.includes('produccion') && !roles.value.includes('propietario');
+});
+
 const props = defineProps({
   recetasCount: { type: Number, default: 30 },
   productosCount: { type: Number, default: 50 },

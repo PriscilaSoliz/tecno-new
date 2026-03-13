@@ -39,9 +39,18 @@ class OrdenController extends Controller
                   ->orWhere('id', $q);
         }
 
-        $ordenes = OrdenProduccion::with(['producto', 'operario.user'])
-            ->orderBy('id', 'desc')
-            ->get();
+        // Filtro por rol para Produccion
+        $user = auth()->user();
+        if ($user && $user->hasRole('produccion') && !$user->hasRole('propietario')) {
+            $operarioId = $user->operario ? $user->operario->id : null;
+            if ($operarioId) {
+                $query->where('operario_id', $operarioId);
+            } else {
+                $query->whereRaw('0 = 1'); // Si no tiene operario asociado, no mostrar nada
+            }
+        }
+
+        $ordenes = $query->orderBy('id', 'desc')->get();
 
         // Cargar productos con recetas (cada receta es un ingrediente)
         $productos = Producto::with(['recetas.ingrediente'])->where('is_active', true)->get();
@@ -187,6 +196,9 @@ class OrdenController extends Controller
                 'cantidad' => $orden->cantidad_a_producir,
                 'fecha' => now(),
             ]);
+
+            // Incrementar stock en catálogo
+            $producto->increment('stock', $orden->cantidad_a_producir);
 
             DB::commit();
             return redirect()->route('ordenes.index')->with('success', "Orden #{$orden->id} creada y materiales consumidos.");
@@ -337,17 +349,21 @@ class OrdenController extends Controller
             ProductoTerminado::create([
                 'producto_id' => $orden->producto_id,
                 'orden_produccion_id' => $orden->id,
-                'cantidad' => $orden->cantidad_a_producir,
+                'cantidad_producida' => $orden->cantidad_a_producir,
+                'fecha_produccion' => now(),
             ]);
 
             // 📊 Registrar movimiento de entrada de producto
             MovimientoProducto::create([
                 'producto_id' => $orden->producto_id,
                 'orden_produccion_id' => $orden->id,
-                'tipo' => 'ENTRADA',
+                'tipo_movimiento' => 'entrada', 
                 'cantidad' => $orden->cantidad_a_producir,
                 'fecha' => now(),
             ]);
+
+            // Incrementar stock en catálogo
+            $orden->producto->increment('stock', $orden->cantidad_a_producir);
 
             // ✅ Marcar orden como finalizada
             $orden->estado = 'finalizada';

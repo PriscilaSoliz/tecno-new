@@ -2,6 +2,9 @@
 import { onMounted, ref, computed } from 'vue';
 import { router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { useNotifications } from '@/Composables/useNotifications';
+
+const { confirm, success, error } = useNotifications();
 
 const props = defineProps({
   pedido: Object,
@@ -104,7 +107,7 @@ const copiarUbicacion = () => {
     // También copiar al portapapeles
     if (navigator.clipboard) {
         navigator.clipboard.writeText(url).then(() => {
-            if (window.$notify) window.$notify.success('Ubicación copiada al portapapeles');
+            success('Ubicación copiada al portapapeles');
         });
     }
 };
@@ -112,7 +115,7 @@ const copiarUbicacion = () => {
 const updateEstado = (nuevoEstado) => {
   router.put(route('pedidos.update', props.pedido.id), { estado_produccion: nuevoEstado }, {
     onSuccess: () => {
-      if (window.$notify) window.$notify.success('Estado del pedido actualizado correctamente');
+      success('Estado del pedido actualizado correctamente');
     }
   });
 };
@@ -135,20 +138,18 @@ const isAtrasado = (fecha) => {
 };
 
 const registrarPagoCuota = async (cuota) => {
-    if (window.$notify) {
-        const ok = await window.$notify.confirm(
-            'Registrar Pago',
-            `¿Confirmar que deseas registrar el pago de Bs ${Number(cuota.monto).toFixed(2)} para la cuota #${cuota.numero_cuota}?`
-        );
-        if (!ok) return;
-    }
+    const isConfirmed = await confirm(
+        `¿Confirmar que deseas registrar el pago de Bs ${Number(cuota.monto).toFixed(2)} para la cuota #${cuota.numero_cuota}?`,
+        'Registrar Pago'
+    );
+    if (!isConfirmed) return;
 
     router.put(route('pedidos.cuota.pagar', cuota.id), {}, {
         onSuccess: () => {
-            if (window.$notify) window.$notify.success('Pago registrado correctamente');
+            success('Pago registrado correctamente');
         },
         onError: () => {
-            if (window.$notify) window.$notify.error('Error al registrar el pago');
+            error('Error al registrar el pago');
         }
     });
 };
@@ -204,6 +205,13 @@ onMounted(async () => await initMap());
               <div class="flex justify-between items-center border-t pt-2">
                 <span class="text-gray-600">Estado: <span class="font-bold uppercase ml-1"
                     :class="{ 'text-green-600': estadoActual === 'completed' }">{{ estadoActual }}</span></span>
+              </div>
+              <div class="flex justify-between items-center border-t pt-2 mt-2">
+                <span class="text-gray-600">Método de Pago: 
+                  <span class="font-bold uppercase ml-1 text-purple-600">
+                    {{ pedido.venta?.tipo_pago || 'No especificado' }}
+                  </span>
+                </span>
                 <span class="text-lg font-bold text-gray-900">Total: Bs {{ Number(pedido.total).toFixed(2) }}</span>
               </div>
             </div>
@@ -285,12 +293,12 @@ onMounted(async () => await initMap());
                 <i class="fas fa-flag-checkered mr-2"></i> Pedido Completado
               </div>
 
-              <!-- Botón Copiar Ubicación -->
+              <!-- Botón Copiar Ubicación 
               <button
                 class="mt-4 w-full px-4 py-3 bg-white border-2 border-indigo-600 text-indigo-600 rounded-lg font-bold hover:bg-indigo-50 transition flex items-center justify-center gap-2"
                 @click="copiarUbicacion">
                 <i class="fas fa-copy"></i> Copiar Ubicación
-              </button>
+              </button> -->
 
               <!-- Botón Google Maps Directo -->
               <a :href="`https://www.google.com/maps?q=${deliveryRoute.destination.lat},${deliveryRoute.destination.lng}`"

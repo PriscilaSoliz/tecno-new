@@ -14,6 +14,13 @@ class Producto extends Model
         'imagen',
         'is_active',
         'has_promo',
+        'stock',
+    ];
+
+    protected $casts = [
+        'is_active'  => 'boolean',
+        'has_promo'  => 'boolean',
+        'stock'      => 'integer',
     ];
     public function promocion()
     {

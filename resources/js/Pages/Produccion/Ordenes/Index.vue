@@ -3,6 +3,17 @@ import { ref } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Create from './Create.vue';
+import { useNotifications } from '@/Composables/useNotifications';
+import { usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
+
+const page = usePage();
+const roles = computed(() => page.props.auth?.user?.roles || []);
+const isProduccionOnly = computed(() => {
+    return roles.value.includes('produccion') && !roles.value.includes('propietario');
+});
+
+const { confirm, success, error } = useNotifications();
 
 const props = defineProps({
     ordenes: { type: Array, default: () => [] },
@@ -27,9 +38,30 @@ const handleCreated = () => {
     router.reload();
 };
 
-const eliminar = (id) => {
-    if (confirm('¿Estás seguro de eliminar esta orden?')) {
-        router.delete(route('ordenes.destroy', id));
+const eliminar = async (id) => {
+    const isConfirmed = await confirm('¿Estás seguro de eliminar esta orden?', 'Eliminar Orden');
+    if (isConfirmed) {
+        router.delete(route('ordenes.destroy', id), {
+            onSuccess: () => {
+                success('Orden eliminada correctamente');
+            }
+        });
+    }
+};
+
+const finalizarOrden = async (id) => {
+    const isConfirmed = await confirm('¿Estás seguro de marcar esta orden como finalizada? Esto registrará el producto en el stock disponible para la venta.', 'Finalizar Orden');
+    if (isConfirmed) {
+        router.put(route('ordenes.update', id), {
+            action: 'finalizar'
+        }, {
+            onSuccess: () => {
+                success('Orden finalizada con éxito. Producto ingresado al inventario.');
+            },
+            onError: (errors) => {
+                error(errors.error || 'Ocurrió un error al procesar la solicitud.');
+            }
+        });
     }
 };
 </script>
@@ -39,7 +71,7 @@ const eliminar = (id) => {
         <template #header>
             <div class="flex justify-between items-center">
                 <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200">Órdenes de Producción</h2>
-                <button @click="showCreate = true" class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 flex items-center gap-2">
+                <button v-if="!isProduccionOnly" @click="showCreate = true" class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 flex items-center gap-2">
                     <i class="fa-solid fa-plus"></i>
                     Nueva Orden
                 </button>
@@ -88,8 +120,12 @@ const eliminar = (id) => {
                                         <td class="px-6 py-4 text-gray-600 dark:text-gray-400">
                                             {{ new Date(orden.fecha_creacion).toLocaleDateString() }}
                                         </td>
-                                        <td class="px-6 py-4">
-                                            <button @click="eliminar(orden.id)" class="text-red-600 hover:text-red-800">
+                                        <td class="px-6 py-4 flex flex-row items-center gap-2">
+                                            <button v-if="orden.estado === 'en_proceso'" @click="finalizarOrden(orden.id)" title="Finalizar e Ingresar a Stock" class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-600 hover:text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md focus:outline-none text-xs">
+                                                <i class="fa-solid fa-check"></i>
+                                                Finalizar Prod.
+                                            </button>
+                                            <button v-if="!isProduccionOnly" @click="eliminar(orden.id)" title="Eliminar Orden" class="text-red-600 hover:text-red-800 focus:outline-none">
                                                 <i class="fa-solid fa-trash"></i>
                                             </button>
                                         </td>
