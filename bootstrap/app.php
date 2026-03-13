@@ -26,5 +26,16 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $exceptions->render(function (\Throwable $e, \Illuminate\Http\Request $request) {
+            if ($request->header('X-Inertia')) {
+                // Error de clave foránea (el del screenshot)
+                if ($e instanceof \Illuminate\Database\QueryException && str_contains(strtolower($e->getMessage()), 'foreign key violation')) {
+                    return back()->with('error', 'No se puede realizar esta operación porque el registro está relacionado con otros datos (ej. pedidos, ventas, etc).');
+                }
+
+                // Errores de servidor generales
+                return back()->with('error', 'Error del sistema: ' . $e->getMessage());
+            }
+            return null;
+        });
     })->create();

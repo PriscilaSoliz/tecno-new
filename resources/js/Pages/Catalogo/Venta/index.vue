@@ -176,11 +176,11 @@ const volverAlCatalogo = () => {
 <template>
     <AppLayout title="Finalizar Compra">
         <template #header>
-            <div class="flex items-center justify-between">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                 <h2 class="font-semibold text-xl text-gray-800 flex items-center gap-2">
                     <i class="fas fa-shopping-cart text-amber-600"></i> Finalizar Compra
                 </h2>
-                <div class="text-sm text-gray-600">
+                <div class="text-xs sm:text-sm text-gray-600">
                     Paso 2 de 2: Confirmar y Pagar
                 </div>
             </div>

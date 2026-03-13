@@ -123,15 +123,15 @@ const irAVenta = () => {
 <template>
     <AppLayout title="Catálogo de Productos">
         <template #header>
-            <div class="flex justify-between items-center">
+            <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
                 <h2 class="font-semibold text-xl text-gray-800">Catálogo de Productos</h2>
                 <!-- Botón Carrito flotante -->
                 <button @click="showCarrito = !showCarrito"
-                    class="relative bg-amber-600 text-white px-4 py-2 rounded-full shadow-lg hover:bg-amber-700 transition flex items-center gap-2 z-10">
+                    class="w-full sm:w-auto relative bg-amber-600 text-white px-6 py-2.5 rounded-full shadow-lg hover:bg-amber-700 transition flex items-center justify-center gap-2 z-10 active:scale-95">
                     <i class="fas fa-shopping-basket text-lg"></i>
-                    <span class="font-medium hidden sm:inline">Mi Canasta</span>
+                    <span class="font-medium">Mi Canasta</span>
                     <span v-if="totalItems > 0"
-                        class="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-6 h-6 rounded-full flex items-center justify-center font-bold border-2 border-white animate-pulse">
+                        class="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-6 h-6 rounded-full flex items-center justify-center font-bold border-2 border-white animate-pulse">
                         {{ totalItems }}
                     </span>
                 </button>
@@ -143,11 +143,11 @@ const irAVenta = () => {
 
                 <!-- Buscador -->
                 <div class="mb-8">
-                    <div class="relative max-w-2xl mx-auto">
+                    <div class="relative max-w-2xl mx-auto px-2 sm:px-0">
                         <input v-model="searchQuery" type="text"
-                            placeholder="¿Qué se te antoja hoy? (Baguette, Croissant...)"
-                            class="w-full pl-12 pr-4 py-4 border-2 border-amber-200 rounded-full shadow-sm focus:ring-4 focus:ring-amber-100 focus:border-amber-400 text-lg transition-all" />
-                        <i class="fas fa-search absolute left-5 top-5 text-amber-400 text-xl"></i>
+                            placeholder="¿Qué se te antoja hoy?"
+                            class="w-full pl-12 pr-4 py-3 sm:py-4 border-2 border-amber-200 rounded-full shadow-sm focus:ring-4 focus:ring-amber-100 focus:border-amber-400 text-base sm:text-lg transition-all" />
+                        <i class="fas fa-search absolute left-6 sm:left-5 top-3 sm:top-5 text-amber-400 text-lg sm:text-xl"></i>
                     </div>
                 </div>
 

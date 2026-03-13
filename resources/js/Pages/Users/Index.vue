@@ -146,13 +146,13 @@ const sortBy = (field) => {
 <template>
     <AppLayout title="Gestión de Usuarios">
         <template #header>
-            <div class="flex justify-between items-center">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                     Gestión de Usuarios
                 </h2>
                 <button 
                     @click="openModal(null)"
-                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center transition-colors shadow-sm text-sm font-semibold uppercase tracking-widest"
+                    class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center justify-center transition-colors shadow-sm text-sm font-semibold uppercase tracking-widest active:scale-95"
                 >
                     <i class="fas fa-plus mr-2"></i>
                     Nuevo Usuario
@@ -181,13 +181,13 @@ const sortBy = (field) => {
                         </div>
                     </div>
 
-                    <!-- Table (Estilo Proveedores) -->
-                    <div class="overflow-x-auto">
+                    <!-- Vista de Tabla (Escritorio) -->
+                    <div class="hidden lg:block overflow-x-auto">
                         <table class="w-full">
                             <thead class="bg-gray-50 text-gray-500">
                                 <tr>
                                     <th 
-                                        class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                                        class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap"
                                         @click="sortBy('id')"
                                     >
                                         <div class="flex items-center">
@@ -196,7 +196,7 @@ const sortBy = (field) => {
                                         </div>
                                     </th>
                                     <th 
-                                        class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                                        class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap"
                                         @click="sortBy('name')"
                                     >
                                         <div class="flex items-center">
@@ -205,7 +205,7 @@ const sortBy = (field) => {
                                         </div>
                                     </th>
                                     <th 
-                                        class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                                        class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap"
                                         @click="sortBy('email')"
                                     >
                                         <div class="flex items-center">
@@ -213,13 +213,13 @@ const sortBy = (field) => {
                                             <i class="fas fa-sort ml-1 text-gray-400"></i>
                                         </div>
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap text-center">
                                         TELÉFONO
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap text-center">
                                         ROL
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                                    <th class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider whitespace-nowrap">
                                         ACCIONES
                                     </th>
                                 </tr>
@@ -245,12 +245,12 @@ const sortBy = (field) => {
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                         {{ user.email }}
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                        {{ user.telefono || 'No registrado' }}
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 text-center">
+                                        {{ user.telefono || '...' }}
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
+                                    <td class="px-6 py-4 whitespace-nowrap text-center">
                                         <span v-for="role in user.roles" :key="role.id"
-                                            class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 mr-1">
+                                            class="px-2 py-1 inline-flex text-[10px] leading-5 font-black uppercase rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 mr-1">
                                             {{ role.name }}
                                         </span>
                                         <span v-if="!user.roles || user.roles.length === 0"
@@ -259,14 +259,14 @@ const sortBy = (field) => {
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <div class="flex space-x-3">
+                                        <div class="flex justify-center space-x-3">
                                             <button @click="openModal(user)"
-                                                class="text-blue-600 hover:text-blue-900 flex items-center transition-colors"
+                                                class="text-blue-600 hover:text-blue-900 flex items-center transition-all active:scale-95"
                                                 title="Editar">
                                                 <i class="fas fa-edit mr-1"></i> Editar
                                             </button>
                                             <button @click="deleteUser(user)"
-                                                class="text-red-600 hover:text-red-900 flex items-center transition-colors"
+                                                class="text-red-600 hover:text-red-900 flex items-center transition-all active:scale-95"
                                                 title="Eliminar">
                                                 <i class="fas fa-trash-alt mr-1"></i> Eliminar
                                             </button>
@@ -281,6 +281,73 @@ const sortBy = (field) => {
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- Vista de Tarjetas (Móvil) -->
+                    <div class="lg:hidden p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div v-for="user in sortedUsers" :key="'card-' + user.id"
+                            class="bg-white dark:bg-gray-800 rounded-3xl p-6 border border-gray-100 dark:border-gray-700 shadow-xl transition-all active:scale-[0.98]">
+                            
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 text-2xl shadow-inner">
+                                    <i class="fas fa-user-astronaut"></i>
+                                </div>
+                                <span class="text-[10px] font-black text-gray-400 bg-gray-50 dark:bg-gray-700 px-3 py-1 rounded-full uppercase tracking-widest border border-gray-100 dark:border-gray-600">ID #{{ user.id }}</span>
+                            </div>
+
+                            <div class="space-y-4 mb-6">
+                                <div>
+                                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">USUARIO</p>
+                                    <h3 class="text-xl font-black text-gray-900 dark:text-white leading-tight truncate">{{ user.name }}</h3>
+                                    <p class="text-xs text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1.5 mt-1">
+                                        <i class="fas fa-envelope text-[10px]"></i>
+                                        {{ user.email }}
+                                    </p>
+                                </div>
+
+                                <div class="flex gap-3">
+                                    <div class="flex-1 bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-3 border border-gray-100 dark:border-gray-600">
+                                        <p class="text-[8px] font-black text-gray-400 uppercase mb-1">TELÉFONO</p>
+                                        <p class="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                                            <i class="fas fa-phone-alt text-[10px] text-gray-400"></i>
+                                            {{ user.telefono || '...' }}
+                                        </p>
+                                    </div>
+                                    <div class="flex-1 bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-3 border border-gray-100 dark:border-gray-600">
+                                        <p class="text-[8px] font-black text-gray-400 uppercase mb-1">ROL</p>
+                                        <div class="flex flex-wrap gap-1">
+                                            <span v-for="role in user.roles" :key="role.id"
+                                                class="px-2 py-0.5 bg-indigo-600 text-white text-[8px] font-black rounded-lg uppercase tracking-tighter">
+                                                {{ role.name }}
+                                            </span>
+                                            <span v-if="!user.roles || user.roles.length === 0" class="text-[9px] text-gray-400 italic">Sin rol</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Acciones -->
+                            <div class="grid grid-cols-2 gap-3 pt-4 border-t border-dashed border-gray-100 dark:border-gray-700">
+                                <button @click="openModal(user)"
+                                    class="flex items-center justify-center gap-2 py-3 bg-blue-50 text-blue-600 rounded-2xl font-black text-[10px] uppercase tracking-wider hover:bg-blue-600 hover:text-white transition-all active:scale-95 shadow-sm">
+                                    <i class="fas fa-user-edit"></i>
+                                    Editar
+                                </button>
+                                <button @click="deleteUser(user)"
+                                    class="flex items-center justify-center gap-2 py-3 bg-rose-50 text-rose-600 rounded-2xl font-black text-[10px] uppercase tracking-wider hover:bg-rose-600 hover:text-white transition-all active:scale-95 shadow-sm">
+                                    <i class="fas fa-user-minus"></i>
+                                    Eliminar
+                                </button>
+                            </div>
+                        </div>
+
+                        <div v-if="sortedUsers.length === 0" class="col-span-full py-16 text-center">
+                            <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-50 mb-4 shadow-inner">
+                                <i class="fas fa-users-slash text-4xl text-gray-200"></i>
+                            </div>
+                            <h4 class="text-lg font-black text-gray-400 uppercase tracking-tighter">No hay usuarios registrados</h4>
+                            <p class="text-xs text-gray-300">Tus criterios de búsqueda no coinciden.</p>
+                        </div>
                     </div>
 
                     <!-- Pagination (Estilo Proveedores) -->

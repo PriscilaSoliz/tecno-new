@@ -1,23 +1,22 @@
 <template>
     <!-- Barra de Búsqueda y Filtros -->
     <div class="p-6 border-b border-gray-200">
-        <div class="flex flex-col md:flex-row gap-4">
-            <div class="flex-1">
-                <div class="relative">
-                    <input
-                        type="text"
-                        v-model="searchQuery"
-                        placeholder="Buscar recetas..."
-                        class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    >
-                    <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
-                </div>
+        <div class="flex flex-col sm:flex-row gap-4">
+            <div class="flex-1 w-full relative">
+                <input
+                    type="text"
+                    v-model="searchQuery"
+                    placeholder="Buscar recetas..."
+                    class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm sm:text-base"
+                >
+                <i class="fas fa-search absolute left-3 top-2.5 sm:top-3 text-gray-400"></i>
             </div>
         </div>
     </div>
 
-    <!-- Tabla de Recetas -->
-    <div class="overflow-x-auto">
+
+    <!-- Vista de Tabla (Escritorio) -->
+    <div class="hidden lg:block overflow-x-auto">
         <table class="w-full">
             <thead class="bg-gray-50">
                 <tr>
@@ -48,10 +47,10 @@
                             <i class="fas fa-sort ml-1 text-gray-400"></i>
                         </div>
                     </th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider text-center">
                         Cantidad por Unidad
                     </th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Acciones
                     </th>
                 </tr>
@@ -71,21 +70,21 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {{ receta.ingrediente?.name || 'N/A' }}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {{ receta.cant_x_unidad }}
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                        <span class="font-black text-amber-600">{{ receta.cant_x_unidad }}</span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div class="flex space-x-2">
+                        <div class="flex justify-center space-x-3">
                             <button
                                 @click="openEditModal(receta)"
-                                class="text-blue-600 hover:text-blue-900 transition-colors"
+                                class="text-blue-600 hover:text-blue-900 transition-all active:scale-95"
                             >
                                 <i class="fas fa-edit"></i>
                                 Editar
                             </button>
                             <button
                                 @click="deleteReceta(receta)"
-                                class="text-red-600 hover:text-red-900 transition-colors"
+                                class="text-red-600 hover:text-red-900 transition-all active:scale-95"
                             >
                                 <i class="fas fa-trash"></i>
                                 Eliminar
@@ -94,13 +93,72 @@
                     </td>
                 </tr>
                 <tr v-if="filteredRecetas.length === 0">
-                    <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+                    <td colspan="5" class="px-6 py-10 text-center text-gray-500">
                         <i class="fas fa-inbox text-4xl mb-2 text-gray-300"></i>
                         <p>No se encontraron recetas</p>
                     </td>
                 </tr>
             </tbody>
         </table>
+    </div>
+
+    <!-- Vista de Tarjetas (Móvil) -->
+    <div class="lg:hidden p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div v-for="receta in sortedRecetas" :key="'card-' + receta.id"
+            class="bg-white dark:bg-gray-800 rounded-3xl p-5 border border-gray-100 dark:border-gray-700 shadow-xl transition-all active:scale-[0.98]">
+            
+            <div class="flex justify-between items-start mb-4">
+                <div class="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center">
+                    <i class="fas fa-mortar-pestle text-amber-600 text-xl"></i>
+                </div>
+                <span class="text-[10px] font-black text-gray-400 bg-gray-50 dark:bg-gray-700 px-2 py-1 rounded-lg uppercase">ID #{{ receta.id }}</span>
+            </div>
+
+            <div class="space-y-4 mb-6">
+                <div>
+                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">PRODUCTO FINAL</p>
+                    <h3 class="text-xl font-black text-gray-900 dark:text-white leading-none truncate">{{ receta.producto?.name || 'N/A' }}</h3>
+                </div>
+
+                <div class="bg-blue-50 dark:bg-blue-900/20 rounded-2xl p-4 border border-blue-100/50 dark:border-blue-800/30">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center">
+                            <i class="fas fa-leaf text-blue-600"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-[9px] font-black text-blue-600 uppercase tracking-widest mb-0.5">INSUMO REQUERIDO</p>
+                            <p class="text-sm font-bold text-gray-800 dark:text-gray-200 truncate">{{ receta.ingrediente?.name || 'N/A' }}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[9px] font-black text-blue-600 uppercase tracking-widest mb-0.5">X UNIDAD</p>
+                            <p class="text-lg font-black text-blue-800 dark:text-blue-300 tracking-tighter">{{ receta.cant_x_unidad }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Acciones -->
+            <div class="grid grid-cols-2 gap-2 pt-4 border-t border-dashed border-gray-100 dark:border-gray-700">
+                <button @click="openEditModal(receta)"
+                    class="flex items-center justify-center gap-2 py-3 bg-indigo-50 text-indigo-600 rounded-2xl font-black text-xs uppercase tracking-wider hover:bg-indigo-600 hover:text-white transition-all active:scale-95">
+                    <i class="fas fa-edit"></i>
+                    Editar
+                </button>
+                <button @click="deleteReceta(receta)"
+                    class="flex items-center justify-center gap-2 py-3 bg-rose-50 text-rose-600 rounded-2xl font-black text-xs uppercase tracking-wider hover:bg-rose-600 hover:text-white transition-all active:scale-95">
+                    <i class="fas fa-trash"></i>
+                    Borrar
+                </button>
+            </div>
+        </div>
+
+        <div v-if="filteredRecetas.length === 0" class="col-span-full py-16 text-center">
+            <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-50 mb-4">
+                <i class="fas fa-receipt text-4xl text-gray-200"></i>
+            </div>
+            <h4 class="text-lg font-black text-gray-400">No hay recetas aquí</h4>
+            <p class="text-sm text-gray-300">Intenta cambiar el término de búsqueda.</p>
+        </div>
     </div>
 
     <!-- Modal de Creación -->

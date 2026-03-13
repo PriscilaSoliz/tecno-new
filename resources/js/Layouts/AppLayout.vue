@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3'; // Se agregó usePage
 import ApplicationMark from '@/Components/ApplicationMark.vue';
 import Banner from '@/Components/Banner.vue';
@@ -97,6 +97,24 @@ async function ensureFontAwesome() {
         injectCss('fa-css-fallback', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css');
     }
 }
+
+// --- new: notify on flash change ---
+watch(() => page.props.flash, (flash) => {
+    if (flash?.success) success(flash.success);
+    if (flash?.error) error(flash.error);
+    if (flash?.warning) warning(flash.warning);
+    if (flash?.info) info(flash.info);
+}, { deep: true, immediate: true });
+
+// --- new: notify on validation errors ---
+watch(() => page.props.errors, (errors) => {
+    if (Object.keys(errors).length > 0) {
+        // En lugar de multiples toasts, mostramos uno genérico con el primer error o todos
+        const firstErrorKey = Object.keys(errors)[0];
+        const msg = Array.isArray(errors[firstErrorKey]) ? errors[firstErrorKey][0] : errors[firstErrorKey];
+        error(msg, 'Error de Validación');
+    }
+}, { deep: true });
 
 onMounted(() => {
     ensureFontAwesome();
@@ -300,6 +318,39 @@ onMounted(() => {
                         <ResponsiveNavLink :href="route('dashboard')" :active="route().current('dashboard')">
                             Dashboard
                         </ResponsiveNavLink>
+                        
+                        <!-- Menú Dinámico Responsivo -->
+                        <template v-for="item in $page.props.menuItems" :key="'res-' + item.id">
+                            <template v-if="item.is_active">
+                                <!-- Item simple -->
+                                <ResponsiveNavLink 
+                                    v-if="!item.children?.length" 
+                                    :href="item.route ? route(item.route) : '#'" 
+                                    :active="item.route ? route().current(item.route) : false"
+                                >
+                                    <i v-if="item.icon" :class="item.icon" class="mr-2"></i>
+                                    {{ item.title }}
+                                </ResponsiveNavLink>
+
+                                <!-- Item con hijos (solo títulos para agrupar) -->
+                                <template v-else>
+                                    <div class="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider border-t border-gray-100 mt-2">
+                                        {{ item.title }}
+                                    </div>
+                                    <ResponsiveNavLink 
+                                        v-for="child in item.children" 
+                                        :key="'res-child-' + child.id"
+                                        v-show="child.is_active"
+                                        :href="child.route ? route(child.route) : '#'"
+                                        :active="child.route ? route().current(child.route) : false"
+                                        class="pl-8"
+                                    >
+                                        <i v-if="child.icon" :class="child.icon" class="mr-2"></i>
+                                        {{ child.title }}
+                                    </ResponsiveNavLink>
+                                </template>
+                            </template>
+                        </template>
                     </div>
 
                     <!-- Responsive Settings Options -->

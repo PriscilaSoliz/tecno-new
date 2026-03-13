@@ -19,6 +19,10 @@ watch(() => props.productos, (n) => productosLocal.value = (n||[]).map(p => ({ .
 const showCreateModal = ref(false);
 const showEditModal = ref(false);
 const editingProduct = ref(null);
+
+const openCreateModal = () => { showCreateModal.value = true; };
+const closeCreateModal = () => { showCreateModal.value = false; };
+
 const onCreated = () => {
   showCreateModal.value = false;
   success('Producto creado correctamente', 'Éxito');

@@ -181,24 +181,8 @@ class OrdenController extends Controller
                 }
             }
 
-            // 4) Registrar producto terminado y movimiento de producto (entrada)
-            ProductoTerminado::create([
-                'producto_id' => $orden->producto_id,
-                'orden_produccion_id' => $orden->id,
-                'cantidad_producida' => $orden->cantidad_a_producir,
-                'fecha_produccion' => now(),
-            ]);
-
-            MovimientoProducto::create([
-                'producto_id' => $orden->producto_id,
-                'orden_produccion_id' => $orden->id,
-                'tipo_movimiento' => 'entrada',  // Cambiado de 'tipo' a 'tipo_movimiento'
-                'cantidad' => $orden->cantidad_a_producir,
-                'fecha' => now(),
-            ]);
-
-            // Incrementar stock en catálogo
-            $producto->increment('stock', $orden->cantidad_a_producir);
+            // La orden se crea en proceso y se consumen los materiales, 
+            // pero NO se incrementa el stock del producto hasta que se finalice.
 
             DB::commit();
             return redirect()->route('ordenes.index')->with('success', "Orden #{$orden->id} creada y materiales consumidos.");
@@ -246,50 +230,46 @@ class OrdenController extends Controller
             return back()->withErrors(['error' => 'Esta orden ya fue procesada o no está pendiente.']);
         }
 
-        // ✅ Obtener Receta
-        $receta = $orden->producto->recetas()->first();
-        if (!$receta) {
-            return back()->withErrors(['error' => 'No se encontró receta para este producto.']);
+        // ✅ Obtener Ingredientes de la Receta
+        $ingredientes = $orden->producto->recetas;
+        if ($ingredientes->isEmpty()) {
+            return back()->withErrors(['error' => 'No se encontró receta configurada para este producto.']);
         }
 
         DB::beginTransaction();
         try {
-            // 🔍 PASO 1: Validación previa de stock (sin modificar nada aún)
-            foreach ($receta->recetaItems as $item) {
-                $cantidadNecesaria = $item->cantidad * $orden->cantidad_a_producir;
+            // 🔍 PASO 1: Validación previa de stock (concurrencia)
+            foreach ($ingredientes as $item) {
+                $cantidadNecesaria = $item->cant_x_unidad * $orden->cantidad_a_producir;
                 $stockDisponible = LoteInsumo::where('ingrediente_id', $item->ingrediente_id)
                     ->where('cantidad_disponible_x_unidad', '>', 0)
                     ->sum('cantidad_disponible_x_unidad');
 
                 if ($stockDisponible < $cantidadNecesaria) {
-                    throw new \Exception("Stock insuficiente para {$item->ingrediente->nombre}. Necesitas {$cantidadNecesaria} pero solo hay {$stockDisponible}.");
+                    throw new \Exception("Stock insuficiente para {$item->ingrediente->nombre}. Necesitas {$cantidadNecesaria} unidades.");
                 }
             }
 
             // 🔥 PASO 2: Aplicar el Algoritmo PEPS (FIFO) - Consumo Real
-            foreach ($receta->recetaItems as $item) {
-                $cantidadPendiente = $item->cantidad * $orden->cantidad_a_producir;
+            foreach ($ingredientes as $item) {
+                $cantidadPendiente = $item->cant_x_unidad * $orden->cantidad_a_producir;
                 $ingredienteId = $item->ingrediente_id;
 
                 // 📦 Obtener lotes ordenados por fecha de ingreso (PEPS = ASC)
                 $lotes = LoteInsumo::where('ingrediente_id', $ingredienteId)
                     ->where('cantidad_disponible_x_unidad', '>', 0)
-                    ->orderBy('fecha_ingreso', 'ASC') // ⚠️ CRÍTICO: Los más antiguos primero
-                    ->lockForUpdate() // Bloqueo para evitar condiciones de carrera
+                    ->orderBy('fecha_ingreso', 'ASC')
+                    ->lockForUpdate()
                     ->get();
 
-                // 🔁 Bucle de Descuento
                 foreach ($lotes as $lote) {
-                    if ($cantidadPendiente <= 0) break; // Ya se cubrió la necesidad
+                    if ($cantidadPendiente <= 0) break;
 
-                    // Calcular cuánto se puede tomar de este lote
                     $cantidadAConsumir = min($lote->cantidad_disponible_x_unidad, $cantidadPendiente);
 
-                    // ✅ Restar del lote
                     $lote->cantidad_disponible_x_unidad -= $cantidadAConsumir;
                     $lote->save();
 
-                    // 📝 Registrar el consumo específico (TRAZABILIDAD)
                     ConsumoInsumo::create([
                         'orden_produccion_id' => $orden->id,
                         'lote_insumo_id' => $lote->id,
@@ -297,7 +277,6 @@ class OrdenController extends Controller
                         'cantidad_consumida' => $cantidadAConsumir,
                     ]);
 
-                    // 📊 Registrar movimiento global de auditoría
                     MovimientoInsumo::create([
                         'ingrediente_id' => $ingredienteId,
                         'lote_insumo_id' => $lote->id,
@@ -307,13 +286,11 @@ class OrdenController extends Controller
                         'fecha' => now(),
                     ]);
 
-                    // Restar de lo que aún falta
                     $cantidadPendiente -= $cantidadAConsumir;
                 }
 
-                // ❌ Si después del bucle aún falta algo, hubo un error de concurrencia
                 if ($cantidadPendiente > 0) {
-                    throw new \Exception("Error de concurrencia: No se pudo cubrir todo el ingrediente {$item->ingrediente->nombre}.");
+                    throw new \Exception("Error de concurrencia al procesar el ingrediente {$item->ingrediente->nombre}.");
                 }
             }
 

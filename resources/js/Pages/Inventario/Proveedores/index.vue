@@ -1,13 +1,13 @@
 <template>
     <AppLayout title="Lista de Proveedores">
         <template #header>
-            <div class="flex justify-between items-center">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                     Lista de Proveedores
                 </h2>
                 <button 
                     @click="showCreateModal = true"
-                    class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center transition-colors"
+                    class="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center justify-center transition-colors shadow-sm active:scale-95"
                 >
                     <i class="fas fa-plus mr-2"></i>
                     Nuevo Proveedor
@@ -22,20 +22,18 @@
                 <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg">
                     <!-- Barra de Búsqueda y Filtros -->
                     <div class="p-6 border-b border-gray-200">
-                        <div class="flex flex-col md:flex-row gap-4">
-                            <div class="flex-1">
-                                <div class="relative">
-                                    <input 
-                                        type="text" 
-                                        v-model="searchQuery"
-                                        placeholder="Buscar proveedores..." 
-                                        class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                    >
-                                    <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
-                                </div>
+                        <div class="flex flex-col sm:flex-row gap-4">
+                            <div class="flex-1 w-full relative">
+                                <input 
+                                    type="text" 
+                                    v-model="searchQuery"
+                                    placeholder="Buscar proveedores..." 
+                                    class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
+                                >
+                                <i class="fas fa-search absolute left-3 top-2.5 sm:top-3 text-gray-400"></i>
                             </div>
-                            <div class="flex gap-2">
-                                <select v-model="statusFilter" class="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500">
+                            <div class="w-full sm:w-auto">
+                                <select v-model="statusFilter" class="w-full sm:w-auto border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 text-sm">
                                     <option value="">Todos los estados</option>
                                     <option value="true">Activos</option>
                                     <option value="false">Inactivos</option>
@@ -44,13 +42,13 @@
                         </div>
                     </div>
 
-                    <!-- Tabla de Proveedores -->
-                    <div class="overflow-x-auto">
+                    <!-- Vista de Tabla (Escritorio) -->
+                    <div class="hidden lg:block overflow-x-auto">
                         <table class="w-full">
-                            <thead class="bg-gray-50">
+                            <thead class="bg-gray-50 text-gray-500">
                                 <tr>
                                     <th 
-                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                        class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap"
                                         @click="sortBy('id')"
                                     >
                                         <div class="flex items-center">
@@ -59,28 +57,28 @@
                                         </div>
                                     </th>
                                     <th 
-                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                        class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap"
                                         @click="sortBy('empresa')"
                                     >
                                         <div class="flex items-center">
-                                            Proveedor
+                                            PROVEEDOR
                                             <i class="fas fa-sort ml-1 text-gray-400"></i>
                                         </div>
                                     </th>
                                     <th 
-                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                        class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap"
                                         @click="sortBy('contacto')"
                                     >
                                         <div class="flex items-center">
-                                            Contacto
+                                            CONTACTO
                                             <i class="fas fa-sort ml-1 text-gray-400"></i>
                                         </div>
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Estado
+                                    <th class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider whitespace-nowrap">
+                                        ESTADO
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Acciones
+                                    <th class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider whitespace-nowrap font-bold">
+                                        ACCIONES
                                     </th>
                                 </tr>
                             </thead>
@@ -95,23 +93,23 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center">
-                                            <div class="flex-shrink-0 h-10 w-10 bg-purple-100 rounded-full flex items-center justify-center">
-                                                <i class="fas fa-building text-purple-600"></i>
+                                            <div class="flex-shrink-0 h-10 w-10 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
+                                                <i class="fas fa-truck-moving text-purple-600"></i>
                                             </div>
                                             <div class="ml-4">
-                                                <div class="text-sm font-medium text-gray-900">
+                                                <div class="text-sm font-bold text-gray-900 dark:text-white">
                                                     {{ proveedor.empresa }}
                                                 </div>
                                             </div>
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900">{{ proveedor.contacto }}</div>
+                                        <div class="text-sm text-gray-600 dark:text-gray-400">{{ proveedor.contacto }}</div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
+                                    <td class="px-6 py-4 whitespace-nowrap text-center">
                                         <span 
                                             :class="[
-                                                'inline-flex px-2 py-1 text-xs font-semibold rounded-full',
+                                                'px-2 py-1 text-[10px] font-black uppercase rounded-lg shadow-sm',
                                                 proveedor.estado 
                                                     ? 'bg-green-100 text-green-800' 
                                                     : 'bg-red-100 text-red-800'
@@ -121,37 +119,87 @@
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <div class="flex space-x-2">
+                                        <div class="flex justify-center space-x-3">
                                             <button 
                                                 @click="openEditModal(proveedor)"
-                                                class="text-blue-600 hover:text-blue-900 transition-colors"
+                                                class="text-blue-600 hover:text-blue-900 transition-all active:scale-95"
                                             >
-                                                <i class="fas fa-edit"></i>
+                                                <i class="fas fa-edit mr-1"></i>
                                                 Editar
                                             </button>
                                             <button 
                                                 @click="toggleStatus(proveedor)"
                                                 :class="[
-                                                    'transition-colors',
+                                                    'transition-all active:scale-95',
                                                     proveedor.estado 
                                                         ? 'text-orange-600 hover:text-orange-900' 
-                                                        : 'text-green-600 hover:text-green-900'
+                                                        : 'text-emerald-600 hover:text-emerald-900'
                                                 ]"
                                             >
-                                                <i :class="proveedor.estado ? 'fas fa-pause' : 'fas fa-play'"></i>
+                                                <i :class="proveedor.estado ? 'fas fa-pause-circle' : 'fas fa-play-circle'" class="mr-1"></i>
                                                 {{ proveedor.estado ? 'Desactivar' : 'Activar' }}
                                             </button>
                                         </div>
                                     </td>
                                 </tr>
                                 <tr v-if="filteredProveedores.length === 0">
-                                    <td colspan="5" class="px-6 py-8 text-center text-gray-500">
-                                        <i class="fas fa-inbox text-4xl mb-2 text-gray-300"></i>
+                                    <td colspan="5" class="px-6 py-10 text-center text-gray-500">
+                                        <i class="fas fa-search text-4xl mb-2 text-gray-300"></i>
                                         <p>No se encontraron proveedores</p>
                                     </td>
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- Vista de Tarjetas (Móvil) -->
+                    <div class="lg:hidden p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div v-for="proveedor in sortedProveedores" :key="'card-' + proveedor.id"
+                            class="bg-white dark:bg-gray-800 rounded-3xl p-6 border border-gray-100 dark:border-gray-700 shadow-xl transition-all active:scale-[0.98]">
+                            
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="w-14 h-14 rounded-2xl bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 text-2xl shadow-inner">
+                                    <i class="fas fa-building"></i>
+                                </div>
+                                <span :class="proveedor.estado ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'" class="text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">
+                                    {{ proveedor.estado ? 'Activo' : 'Inactivo' }}
+                                </span>
+                            </div>
+
+                            <div class="space-y-4 mb-6">
+                                <div>
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="text-[10px] font-black text-gray-400">ID #{{ proveedor.id }}</span>
+                                    </div>
+                                    <h3 class="text-xl font-black text-gray-900 dark:text-white leading-tight mb-1 truncate">{{ proveedor.empresa }}</h3>
+                                    <p class="text-xs text-purple-600 dark:text-purple-400 font-bold flex items-center gap-1.5">
+                                        <i class="fas fa-id-card text-[10px]"></i>
+                                        {{ proveedor.contacto }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Acciones -->
+                            <div class="grid grid-cols-2 gap-3 pt-4 border-t border-dashed border-gray-100 dark:border-gray-700">
+                                <button @click="openEditModal(proveedor)"
+                                    class="flex items-center justify-center gap-2 py-3 bg-blue-50 text-blue-600 rounded-2xl font-black text-[10px] uppercase tracking-wider hover:bg-blue-600 hover:text-white transition-all active:scale-95 shadow-sm">
+                                    <i class="fas fa-edit"></i>
+                                    Editar
+                                </button>
+                                <button @click="toggleStatus(proveedor)"
+                                    :class="proveedor.estado ? 'bg-orange-50 text-orange-600 hover:bg-orange-600' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600'"
+                                    class="flex items-center justify-center gap-2 py-3 rounded-2xl font-black text-[10px] uppercase tracking-wider hover:text-white transition-all active:scale-95 shadow-sm">
+                                    <i :class="proveedor.estado ? 'fas fa-pause' : 'fas fa-play'"></i>
+                                    {{ proveedor.estado ? 'Pausar' : 'Activar' }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div v-if="filteredProveedores.length === 0" class="col-span-full py-16 text-center">
+                            <i class="fas fa-folder-open text-5xl text-gray-200 mb-4"></i>
+                            <h4 class="text-lg font-black text-gray-400">No hay proveedores</h4>
+                            <p class="text-xs text-gray-300 uppercase font-bold tracking-widest">Intenta otra búsqueda</p>
+                        </div>
                     </div>
 
                     <!-- Paginación -->

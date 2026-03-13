@@ -75,6 +75,15 @@ class HandleInertiaRequests extends Middleware
             ],
             'menuItems' => $menuItems,
             'pageVisits' => (int) $pageVisits,
+            'flash' => [
+                'success' => $request->session()->get('success'),
+                'error' => $request->session()->get('error'),
+                'warning' => $request->session()->get('warning'),
+                'info' => $request->session()->get('info'),
+            ],
+            'errors' => fn () => $request->session()->get('errors')
+                ? $request->session()->get('errors')->getBag('default')->getMessages()
+                : (object) [],
             'stripe_key' => config('services.stripe.key'),
             'app_url' => url('/'),
         ];

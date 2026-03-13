@@ -27,12 +27,12 @@ const openCreate = () => {
 <template>
     <AppLayout title="Recetas">
         <template #header>
-            <div class="flex justify-between items-center">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">Lista de Recetas</h2>
 
                 <!-- call child method to show modal -->
                 <button @click="openCreate"
-                    class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg flex items-center transition-colors">
+                    class="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg flex items-center justify-center transition-colors active:scale-95 shadow-sm">
                     <i class="fas fa-plus mr-2"></i>
                     Nueva Receta
                 </button>

@@ -1,12 +1,12 @@
 <template>
     <AppLayout title="Gestión de Almacén">
         <template #header>
-            <div class="flex justify-between items-center">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                     Gestión de Almacén
                 </h2>
                 <button @click="openCreateModal"
-                   class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg flex items-center transition-colors">
+                   class="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg flex items-center justify-center transition-colors active:scale-95 shadow-sm">
                     <i class="fas fa-plus mr-2"></i>
                     Crear Insumo
                 </button>
@@ -55,8 +55,8 @@
                         </div>
                     </div>
 
-                    <!-- 📋 Tabla de Ingredientes -->
-                    <div class="overflow-x-auto">
+                    <!-- Vista de Tabla (Escritorio) -->
+                    <div class="hidden lg:block overflow-x-auto">
                         <table class="w-full">
                             <thead class="bg-gray-50">
                                 <tr>
@@ -82,18 +82,18 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                         #{{ ingrediente.id }}
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-bold uppercase tracking-tight">
                                         {{ ingrediente.nombre }}
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {{ ingrediente.unidad_medida }}
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                                        <span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-lg font-black">{{ ingrediente.unidad_medida }}</span>
                                     </td>
-                                    <td class="px-6 py-4 text-sm text-gray-900">
-                                        <div class="max-w-xs truncate">{{ ingrediente.descripcion }}</div>
+                                    <td class="px-6 py-4 text-sm text-gray-500 italic">
+                                        <div class="max-w-xs truncate">{{ ingrediente.descripcion || 'Sin descripción' }}</div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
+                                    <td class="px-6 py-4 whitespace-nowrap text-center">
                                         <span :class="[
-                                                'inline-flex px-2 py-1 text-xs font-semibold rounded-full',
+                                                'inline-flex px-2 py-1 text-[10px] font-black uppercase rounded-full shadow-sm',
                                                 ingrediente.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                                             ]">
                                             {{ ingrediente.is_active ? 'Activo' : 'Inactivo' }}
@@ -101,52 +101,90 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-center">
                                         <div class="flex items-center justify-center space-x-2">
-
-                                            <!-- Botón Entrada -->
-                                            <button
-                                                @click="registrarEntrada(ingrediente)"
-                                                class="group relative flex items-center justify-center w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 hover:text-emerald-900 transition-all duration-200 shadow-sm"
-                                                title="Registrar Entrada">
-                                                <i class="fas fa-arrow-down text-lg"></i>
-                                                <span class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-20 pointer-events-none">
-                                                    Registrar Entrada
-                                                </span>
+                                            <button @click="registrarEntrada(ingrediente)"
+                                                class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 hover:bg-emerald-600 hover:text-white transition-all active:scale-90 shadow-sm flex items-center justify-center" title="Entrada">
+                                                <i class="fas fa-arrow-down-long"></i>
                                             </button>
-
-                                            <!-- Botón Editar -->
-                                            <button
-                                                @click="editarIngrediente(ingrediente)"
-                                                class="group relative flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 hover:text-blue-900 transition-all duration-200 shadow-sm"
-                                                title="Editar Ingrediente">
-                                                <i class="fas fa-edit text-lg"></i>
-                                                <span class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-20 pointer-events-none">
-                                                    Editar
-                                                </span>
+                                            <button @click="editarIngrediente(ingrediente)"
+                                                class="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 hover:bg-blue-600 hover:text-white transition-all active:scale-90 shadow-sm flex items-center justify-center" title="Editar">
+                                                <i class="fas fa-pen-nib"></i>
                                             </button>
-
-                                            <!-- Botón Eliminar -->
-                                            <button
-                                                @click="eliminarIngrediente(ingrediente)"
-                                                class="group relative flex items-center justify-center w-10 h-10 rounded-full bg-red-100 text-red-700 hover:bg-red-200 hover:text-red-900 transition-all duration-200 shadow-sm"
-                                                title="Eliminar Ingrediente">
-                                                <i class="fas fa-trash text-lg"></i>
-                                                <span class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-20 pointer-events-none">
-                                                    Eliminar
-                                                </span>
+                                            <button @click="eliminarIngrediente(ingrediente)"
+                                                class="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 hover:bg-rose-600 hover:text-white transition-all active:scale-90 shadow-sm flex items-center justify-center" title="Eliminar">
+                                                <i class="fas fa-trash-can"></i>
                                             </button>
-
                                         </div>
                                     </td>
                                 </tr>
 
                                 <tr v-if="sortedIngredientes.length === 0">
-                                    <td colspan="6" class="px-6 py-8 text-center text-gray-500">
-                                        <i class="fas fa-inbox text-4xl mb-2 text-gray-300"></i>
-                                        <p>No se encontraron ingredientes</p>
+                                    <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                                        <i class="fas fa-kitchen-set text-5xl mb-3 opacity-20"></i>
+                                        <p class="font-bold">No hay insumos registrados.</p>
                                     </td>
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- Vista de Tarjetas (Móvil) -->
+                    <div class="lg:hidden p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div v-for="ingrediente in sortedIngredientes" :key="'card-' + ingrediente.id"
+                            class="bg-white dark:bg-gray-800 rounded-3xl p-6 border border-gray-100 dark:border-gray-700 shadow-xl transition-all active:scale-[0.98]">
+                            
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 text-2xl shadow-inner border border-amber-100">
+                                    <i class="fas fa-jar"></i>
+                                </div>
+                                <span :class="ingrediente.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'" class="text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest border">
+                                    {{ ingrediente.is_active ? 'Activo' : 'Inactivo' }}
+                                </span>
+                            </div>
+
+                            <div class="space-y-4 mb-6">
+                                <div>
+                                    <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Insumo #{{ ingrediente.id }}</span>
+                                    <h3 class="text-xl font-black text-gray-900 dark:text-white leading-tight mb-2 uppercase truncate">{{ ingrediente.nombre }}</h3>
+                                    <div class="flex items-center gap-2">
+                                        <span class="bg-amber-600 text-white text-[10px] font-black px-2 py-1 rounded-lg uppercase">Unidad: {{ ingrediente.unidad_medida }}</span>
+                                    </div>
+                                </div>
+
+                                <div class="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-600">
+                                    <p class="text-[8px] font-black text-gray-400 uppercase mb-1">DESCRIPCIÓN</p>
+                                    <p class="text-xs text-gray-600 dark:text-gray-300 italic line-clamp-2">
+                                        {{ ingrediente.descripcion || 'Sin descripción detallada para este insumo.' }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Acciones Rápidas -->
+                            <div class="grid grid-cols-3 gap-2 pt-4 border-t border-dashed border-gray-100 dark:border-gray-700">
+                                <button @click="registrarEntrada(ingrediente)"
+                                    class="flex flex-col items-center justify-center py-3 bg-emerald-50 text-emerald-600 rounded-2xl font-black text-[9px] uppercase tracking-wider hover:bg-emerald-600 hover:text-white transition-all active:scale-95 shadow-sm">
+                                    <i class="fas fa-plus-circle mb-1 text-base"></i>
+                                    Entrada
+                                </button>
+                                <button @click="editarIngrediente(ingrediente)"
+                                    class="flex flex-col items-center justify-center py-3 bg-blue-50 text-blue-600 rounded-2xl font-black text-[9px] uppercase tracking-wider hover:bg-blue-600 hover:text-white transition-all active:scale-95 shadow-sm">
+                                    <i class="fas fa-pen mb-1 text-base"></i>
+                                    Editar
+                                </button>
+                                <button @click="eliminarIngrediente(ingrediente)"
+                                    class="flex flex-col items-center justify-center py-3 bg-rose-50 text-rose-600 rounded-2xl font-black text-[9px] uppercase tracking-wider hover:bg-rose-600 hover:text-white transition-all active:scale-95 shadow-sm">
+                                    <i class="fas fa-trash-can mb-1 text-base"></i>
+                                    Borrar
+                                </button>
+                            </div>
+                        </div>
+
+                        <div v-if="sortedIngredientes.length === 0" class="col-span-full py-20 text-center">
+                            <div class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gray-50 mb-6 shadow-inner">
+                                <i class="fas fa-box-open text-5xl text-gray-200"></i>
+                            </div>
+                            <h4 class="text-xl font-black text-gray-400 uppercase">Sin existencias</h4>
+                            <p class="text-sm text-gray-300">Asegúrate de registrar tus insumos para comenzar la producción.</p>
+                        </div>
                     </div>
 
                     <!-- 📄 Paginación -->
